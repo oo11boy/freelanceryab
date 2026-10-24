@@ -1,9 +1,9 @@
-'use client';
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import PostCard from './components/PostCard';
-import { postsAPI } from './services/api';
-import { CATEGORIES } from './constants/categories';
+"use client";
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import PostCard from "./components/PostCard";
+import { postsAPI } from "./services/api";
+import { CATEGORIES } from "./constants/categories";
 
 interface Post {
   id: number;
@@ -29,7 +29,7 @@ export default function HomePage() {
       const data = await postsAPI.getPosts({ page: 1 });
       setPosts(data.posts);
     } catch (error) {
-      console.error('خطا در بارگذاری آگهی‌ها:', error);
+      console.error("خطا در بارگذاری آگهی‌ها:", error);
     } finally {
       setLoading(false);
     }
@@ -38,7 +38,7 @@ export default function HomePage() {
   const formatTimeAgo = (date: string) => {
     const diff = Date.now() - new Date(date).getTime();
     const hours = Math.floor(diff / (1000 * 60 * 60));
-    if (hours < 1) return 'لحظاتی پیش';
+    if (hours < 1) return "لحظاتی پیش";
     if (hours < 24) return `${hours} ساعت پیش`;
     return `${Math.floor(hours / 24)} روز پیش`;
   };
@@ -46,7 +46,7 @@ export default function HomePage() {
   return (
     <div className="pb-2">
       <div className="bg-white px-4 py-3 shadow-sm sticky top-0 z-10">
-        <h1 className="text-xl font-bold text-blue-600">همیار مجازی</h1>
+        <h1 className="text-xl font-bold text-blue-600">فریلنسرکار</h1>
         <p className="text-xs text-gray-500">بازار کارهای آنلاین</p>
       </div>
 
@@ -60,7 +60,9 @@ export default function HomePage() {
               className={`flex flex-col items-center p-3 rounded-xl bg-${cat.color}-50 min-w-[70px] hover:shadow-md transition`}
             >
               <span className="text-2xl mb-1">{cat.icon}</span>
-              <span className="text-xs font-medium text-gray-700">{cat.name}</span>
+              <span className="text-xs font-medium text-gray-700">
+                {cat.name}
+              </span>
             </Link>
           ))}
         </div>
@@ -78,7 +80,10 @@ export default function HomePage() {
         {loading ? (
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="bg-white rounded-lg p-4 flex gap-3 animate-pulse">
+              <div
+                key={i}
+                className="bg-white rounded-lg p-4 flex gap-3 animate-pulse"
+              >
                 <div className="w-20 h-20 bg-gray-200 rounded-md"></div>
                 <div className="flex-1">
                   <div className="h-5 bg-gray-200 rounded w-3/4 mb-2"></div>
@@ -95,7 +100,7 @@ export default function HomePage() {
               title={post.title}
               price={post.price}
               category={post.category}
-              location={post.location || 'آنلاین'}
+              location={post.location || "آنلاین"}
               timeAgo={formatTimeAgo(post.created_at)}
             />
           ))

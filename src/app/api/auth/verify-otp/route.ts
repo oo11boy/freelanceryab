@@ -14,7 +14,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // بررسی کد در دیتابیس
+    if (!/^09\d{9}$/.test(phone)) {
+      return NextResponse.json(
+        { error: 'شماره موبایل معتبر نیست' },
+        { status: 400 }
+      );
+    }
+
     const otpRecords = await query(
       `SELECT * FROM otp_codes
        WHERE phone = ? AND code = ? AND is_used = FALSE
@@ -32,16 +38,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // علامت‌گذاری کد به عنوان استفاده شده
     await query('UPDATE otp_codes SET is_used = TRUE WHERE id = ?', [otp.id]);
 
-    // پیدا کردن یا ایجاد کاربر
     let users = await query('SELECT * FROM users WHERE phone = ?', [phone]);
     let user = (users as any[])[0];
     let isNewUser = false;
 
     if (!user) {
-      // ✅ ثبت‌نام بدون role و email — فقط phone
       const result = await query('INSERT INTO users (phone) VALUES (?)', [
         phone,
       ]);
@@ -51,18 +54,15 @@ export async function POST(request: NextRequest) {
       isNewUser = true;
     }
 
-    // ✅ بررسی نیاز به تکمیل پروفایل
     const needsProfileCompletion =
       !user.full_name || !String(user.full_name).trim();
 
-    // تولید توکن JWT
     const token = jwt.sign(
       { id: user.id, phone: user.phone },
       process.env.JWT_SECRET!,
       { expiresIn: '30d' }
     );
 
-    // حذف اطلاعات حساس
     delete user.password;
     delete user.password_hash;
 

@@ -1,15 +1,15 @@
-'use client';
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+"use client";
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function Header() {
   const router = useRouter();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userName, setUserName] = useState('');
+  const [userName, setUserName] = useState("");
 
   useEffect(() => {
-    const user = localStorage.getItem('user');
+    const user = localStorage.getItem("user");
     if (user) {
       const userData = JSON.parse(user);
       setIsLoggedIn(true);
@@ -18,16 +18,16 @@ export default function Header() {
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem('user');
+    localStorage.removeItem("user");
     setIsLoggedIn(false);
-    router.push('/');
+    router.push("/");
   };
 
   return (
     <header className="bg-white shadow-md sticky top-0 z-50">
       <div className="container px-4 py-3 flex justify-between items-center max-w-md mx-auto">
         <Link href="/" className="text-xl font-bold text-blue-600">
-          همیار مجازی
+          فریلنسرکار
         </Link>
 
         <div className="flex items-center gap-3">
