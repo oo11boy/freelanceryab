@@ -1,9 +1,10 @@
-// server.js - فقط Socket.io، بدون Next.js
+cat > /root/freelanceryab/server.js << 'ENDOFFILE'
+// server.js - Socket.io standalone server
 const { createServer } = require('http');
 const { Server } = require('socket.io');
 const mysql = require('mysql2/promise');
 const jwt = require('jsonwebtoken');
-require('dotenv').config({ path: '.env.local' });
+require('dotenv').config(); // ← از .env می‌خونه نه .env.local
 
 // -------------------------------------------------
 // اتصال به دیتابیس
@@ -19,11 +20,10 @@ const pool = mysql.createPool({
 });
 
 // -------------------------------------------------
-// سرور HTTP ساده (بدون Next.js)
+// سرور HTTP
 // -------------------------------------------------
 const server = createServer((req, res) => {
-  // یک endpoint ساده برای health check
-  if (req.url === '/health') {
+  if (req.url === '/health' || req.url === '/') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ status: 'ok', service: 'socket.io' }));
     return;
@@ -32,12 +32,21 @@ const server = createServer((req, res) => {
   res.end();
 });
 
+// -------------------------------------------------
+// Socket.io با CORS برای production
+// -------------------------------------------------
+const ALLOWED_ORIGINS = [
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  'https://freelanceryaab.ir',
+  'http://freelanceryaab.ir',
+  'https://www.freelanceryaab.ir',
+  'http://www.freelanceryaab.ir',
+];
+
 const io = new Server(server, {
   cors: {
-    origin: [
-      'http://localhost:3000',
-      'http://10.203.104.213:3000',
-    ],
+    origin: ALLOWED_ORIGINS,
     methods: ['GET', 'POST'],
     credentials: true,
   },
@@ -227,7 +236,10 @@ io.on('connection', (socket) => {
 // -------------------------------------------------
 // راه‌اندازی سرور
 // -------------------------------------------------
-const PORT = process.env.SOCKET_PORT || 3001;
-server.listen(PORT, () => {
-  console.log(`> 🚀 Socket.io server ready on http://localhost:${PORT}`);
+const PORT = parseInt(process.env.PORT || '3001', 10);
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`> 🚀 Socket.io server ready on http://0.0.0.0:${PORT}`);
+  console.log(`> DB: ${process.env.DB_USER}@${process.env.DB_HOST}/${process.env.DB_NAME}`);
+  console.log(`> Allowed origins: ${ALLOWED_ORIGINS.join(', ')}`);
 });
+ENDOFFILE
