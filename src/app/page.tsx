@@ -1,65 +1,111 @@
-import Image from "next/image";
+'use client';
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import PostCard from './components/PostCard';
+import { postsAPI } from './services/api';
+import { CATEGORIES } from './constants/categories';
 
-export default function Home() {
+interface Post {
+  id: number;
+  title: string;
+  price: string;
+  category: string;
+  location: string;
+  created_at: string;
+  views: number;
+  user_name: string;
+}
+
+export default function HomePage() {
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadPosts();
+  }, []);
+
+  const loadPosts = async () => {
+    try {
+      const data = await postsAPI.getPosts({ page: 1 });
+      setPosts(data.posts);
+    } catch (error) {
+      console.error('خطا در بارگذاری آگهی‌ها:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatTimeAgo = (date: string) => {
+    const diff = Date.now() - new Date(date).getTime();
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    if (hours < 1) return 'لحظاتی پیش';
+    if (hours < 24) return `${hours} ساعت پیش`;
+    return `${Math.floor(hours / 24)} روز پیش`;
+  };
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    <div className="pb-2">
+      <div className="bg-white px-4 py-3 shadow-sm sticky top-0 z-10">
+        <h1 className="text-xl font-bold text-blue-600">همیار مجازی</h1>
+        <p className="text-xs text-gray-500">بازار کارهای آنلاین</p>
+      </div>
+
+      {/* دسته‌بندی‌ها */}
+      <div className="px-4 py-4 overflow-x-auto hide-scrollbar">
+        <div className="flex gap-3">
+          {CATEGORIES.map((cat) => (
+            <Link
+              key={cat.slug}
+              href={`/category/${cat.slug}`}
+              className={`flex flex-col items-center p-3 rounded-xl bg-${cat.color}-50 min-w-[70px] hover:shadow-md transition`}
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+              <span className="text-2xl mb-1">{cat.icon}</span>
+              <span className="text-xs font-medium text-gray-700">{cat.name}</span>
+            </Link>
+          ))}
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+      </div>
+
+      {/* لیست آگهی‌ها */}
+      <div className="px-4">
+        <div className="flex justify-between items-center mb-3">
+          <h2 className="text-lg font-bold">آخرین آگهی‌ها</h2>
+          <Link href="/explore" className="text-sm text-blue-600">
+            مشاهده همه
+          </Link>
+        </div>
+
+        {loading ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-white rounded-lg p-4 flex gap-3 animate-pulse">
+                <div className="w-20 h-20 bg-gray-200 rounded-md"></div>
+                <div className="flex-1">
+                  <div className="h-5 bg-gray-200 rounded w-3/4 mb-2"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : posts.length > 0 ? (
+          posts.map((post) => (
+            <PostCard
+              key={post.id}
+              id={post.id}
+              title={post.title}
+              price={post.price}
+              category={post.category}
+              location={post.location || 'آنلاین'}
+              timeAgo={formatTimeAgo(post.created_at)}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+          ))
+        ) : (
+          <div className="text-center py-10 text-gray-500">
+            <p className="text-4xl mb-2">📭</p>
+            <p>هیچ آگهی یافت نشد</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
