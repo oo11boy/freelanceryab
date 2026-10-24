@@ -85,6 +85,7 @@ export const postsAPI = {
     search?: string;
     sort?: string;
     page?: number;
+    limit?: number; 
   }) => {
     const query = new URLSearchParams();
     if (params?.category) query.append('category', params.category);

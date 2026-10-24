@@ -1,5 +1,6 @@
 "use client";
-import { useState, useEffect } from "react";
+
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import PostCard from "@/app/components/PostCard";
 import { postsAPI } from "@/app/services/api";
@@ -21,7 +22,11 @@ const SORT_MAP: Record<string, string> = {
   most_viewed: "most_viewed",
 };
 
-export default function ExplorePage() {
+/**
+ * کامپوننت داخلی که از useSearchParams استفاده می‌کند.
+ * باید حتماً داخل <Suspense> رندر شود تا build تولید شکست نخورد.
+ */
+function ExploreContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [search, setSearch] = useState(searchParams.get("q") || "");
@@ -126,7 +131,9 @@ export default function ExplorePage() {
                     type="number"
                     placeholder="حداقل"
                     value={priceRange.min}
-                    onChange={(e) => setPriceRange({ ...priceRange, min: e.target.value })}
+                    onChange={(e) =>
+                      setPriceRange({ ...priceRange, min: e.target.value })
+                    }
                     className="flex-1 p-2 border rounded text-sm"
                   />
                   <span>تا</span>
@@ -134,7 +141,9 @@ export default function ExplorePage() {
                     type="number"
                     placeholder="حداکثر"
                     value={priceRange.max}
-                    onChange={(e) => setPriceRange({ ...priceRange, max: e.target.value })}
+                    onChange={(e) =>
+                      setPriceRange({ ...priceRange, max: e.target.value })
+                    }
                     className="flex-1 p-2 border rounded text-sm"
                   />
                 </div>
@@ -175,7 +184,10 @@ export default function ExplorePage() {
         {loading ? (
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="bg-white rounded-lg p-4 flex gap-3 animate-pulse">
+              <div
+                key={i}
+                className="bg-white rounded-lg p-4 flex gap-3 animate-pulse"
+              >
                 <div className="w-20 h-20 bg-gray-200 rounded-md" />
                 <div className="flex-1">
                   <div className="h-5 bg-gray-200 rounded w-3/4 mb-2" />
@@ -205,5 +217,53 @@ export default function ExplorePage() {
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * Fallback هنگام بارگذاری (Suspense boundary).
+ * می‌توانید اسکلتون دلخواه بگذارید.
+ */
+function ExploreFallback() {
+  return (
+    <div className="min-h-screen bg-gray-50 pb-24">
+      <div className="bg-white shadow-sm sticky top-0 z-10 px-4 py-3">
+        <div className="h-12 bg-gray-200 rounded-lg animate-pulse mb-3" />
+        <div className="flex gap-2 overflow-x-auto">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div
+              key={i}
+              className="h-8 w-20 bg-gray-200 rounded-full animate-pulse flex-shrink-0"
+            />
+          ))}
+        </div>
+      </div>
+      <div className="px-4 mt-3 space-y-3">
+        {[1, 2, 3].map((i) => (
+          <div
+            key={i}
+            className="bg-white rounded-lg p-4 flex gap-3 animate-pulse"
+          >
+            <div className="w-20 h-20 bg-gray-200 rounded-md" />
+            <div className="flex-1">
+              <div className="h-5 bg-gray-200 rounded w-3/4 mb-2" />
+              <div className="h-4 bg-gray-200 rounded w-1/2" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * کامپوننت پوسته — این همان چیزی است که Next.js به عنوان page می‌شناسد.
+ * نکته کلیدی: useSearchParams فقط داخل <Suspense> استفاده می‌شود.
+ */
+export default function ExplorePage() {
+  return (
+    <Suspense fallback={<ExploreFallback />}>
+      <ExploreContent />
+    </Suspense>
   );
 }

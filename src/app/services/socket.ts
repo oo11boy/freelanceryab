@@ -1,27 +1,19 @@
-// app/services/socket.ts
 'use client';
-import { io, Socket } from 'socket.io-client';
 
-let socket: Socket | null = null;
+let socket: any = null;
 
-export const initializeSocket = (token: string): Socket => {
-  // اگر سوکت وجود دارد و متصل است، همان را برگردان
-  if (socket?.connected) {
-    return socket;
-  }
-
-  // اگر سوکت وجود دارد ولی قطع شده، دوباره وصل شو
+export const initializeSocket = (token: string) => {
+  if (typeof window === 'undefined') return null;
+  if (socket?.connected) return socket;
   if (socket) {
     socket.auth = { token };
     socket.connect();
     return socket;
   }
 
-  // ساخت سوکت جدید
+  const { io } = require('socket.io-client');
   socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001', {
-    auth: {
-      token, // ✅ روش استاندارد Socket.io
-    },
+    auth: { token },
     transports: ['websocket', 'polling'],
     reconnection: true,
     reconnectionAttempts: 10,
@@ -31,28 +23,19 @@ export const initializeSocket = (token: string): Socket => {
     autoConnect: true,
   });
 
-  socket.on('connect', () => {
-    console.log('✅ Socket connected:', socket?.id);
-  });
-
-  socket.on('disconnect', (reason) => {
-    console.log('❌ Socket disconnected:', reason);
-  });
-
-  socket.on('connect_error', (err) => {
-    console.error('🔴 Socket connection error:', err.message);
-  });
+  socket.on('connect', () => console.log('✅ Socket connected:', socket?.id));
+  socket.on('disconnect', (reason: string) => console.log('❌ Socket disconnected:', reason));
+  socket.on('connect_error', (err: Error) => console.error('🔴 Socket error:', err.message));
 
   return socket;
 };
 
-export const getSocket = (): Socket | null => socket;
+export const getSocket = () => socket;
 
 export const disconnectSocket = (): void => {
   if (socket) {
     socket.removeAllListeners();
     socket.disconnect();
     socket = null;
-    console.log('🔌 Socket disconnected manually');
   }
 };
