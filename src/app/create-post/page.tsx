@@ -31,12 +31,10 @@ export default function CreatePostPage() {
     skills: [] as string[],
   });
 
-  // مهلت: تعداد روز (یا custom)
   const [deadlineDays, setDeadlineDays] = useState<number | "custom" | null>(
     null
   );
   const [customDays, setCustomDays] = useState("");
-
   const [skillInput, setSkillInput] = useState("");
 
   useEffect(() => {
@@ -61,10 +59,12 @@ export default function CreatePostPage() {
     >
   ) => {
     const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
-    if (errors[name]) setErrors({ ...errors, [name]: "" });
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
+
     if (name === "category") {
       setFormData((prev) => ({ ...prev, category: value, sub_category: "" }));
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }));
     }
   };
 
@@ -75,7 +75,7 @@ export default function CreatePostPage() {
     const val = skillInput.trim();
     if (!val) return;
     if (!formData.skills.includes(val)) {
-      setFormData({ ...formData, skills: [...formData.skills, val] });
+      setFormData((prev) => ({ ...prev, skills: [...prev.skills, val] }));
     }
     setSkillInput("");
   };
@@ -88,10 +88,10 @@ export default function CreatePostPage() {
   };
 
   const handleRemoveSkill = (skill: string) =>
-    setFormData({
-      ...formData,
-      skills: formData.skills.filter((s) => s !== skill),
-    });
+    setFormData((prev) => ({
+      ...prev,
+      skills: prev.skills.filter((s) => s !== skill),
+    }));
 
   // -------------------------------------------------
   // اعتبارسنجی
@@ -128,12 +128,9 @@ export default function CreatePostPage() {
   };
   const prevStep = () => setStep(step - 1);
 
-  // محاسبه تاریخ نهایی مهلت
   const computeDeadline = (): string => {
     const days =
-      deadlineDays === "custom"
-        ? Number(customDays)
-        : deadlineDays ?? 0;
+      deadlineDays === "custom" ? Number(customDays) : deadlineDays ?? 0;
     if (!days || days < 1) return "";
     const d = new Date();
     d.setDate(d.getDate() + days);
@@ -170,7 +167,6 @@ export default function CreatePostPage() {
     { num: 3, title: "تأیید نهایی", icon: "✅" },
   ];
 
-  // متن نمایش مهلت برای پیش‌نمایش
   const deadlineLabel =
     deadlineDays === "custom"
       ? customDays
@@ -183,7 +179,7 @@ export default function CreatePostPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-blue-50/30 pb-24">
       {/* هدر */}
-      <div className="bg-white/90 backdrop-blur-md border-b border-gray-200 shadow-sm sticky top-0 z-20">
+      <div className="bg-white/95 backdrop-blur-md border-b border-gray-200 shadow-sm sticky top-0 z-20">
         <div className="flex items-center gap-2 px-4 py-3">
           <button
             onClick={() => router.back()}
@@ -345,7 +341,7 @@ export default function CreatePostPage() {
                   <option value="">انتخاب کنید</option>
                   {CATEGORIES.map((cat) => (
                     <option key={cat.id} value={cat.dbName}>
-                      {cat.name}
+                      {cat.icon} {cat.name}
                     </option>
                   ))}
                 </select>
@@ -539,7 +535,6 @@ export default function CreatePostPage() {
               </div>
             </div>
 
-            {/* مهارت‌ها — دکمه + */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 مهارت‌های مورد نیاز{" "}
@@ -639,7 +634,6 @@ export default function CreatePostPage() {
               </p>
             </div>
 
-            {/* موقعیت */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 موقعیت مکانی{" "}
@@ -663,7 +657,6 @@ export default function CreatePostPage() {
               </p>
             </div>
 
-            {/* مهلت — چیپ‌های تعداد روز */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 مهلت انجام{" "}
@@ -679,7 +672,7 @@ export default function CreatePostPage() {
                       onClick={() => {
                         setDeadlineDays(isActive ? null : opt.days);
                         setCustomDays("");
-                        setErrors({ ...errors, deadline: "" });
+                        setErrors((prev) => ({ ...prev, deadline: "" }));
                       }}
                       className={`px-4 py-2 rounded-xl text-sm font-medium border-2 transition-all active:scale-95 ${
                         isActive
@@ -694,7 +687,9 @@ export default function CreatePostPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    setDeadlineDays(deadlineDays === "custom" ? null : "custom");
+                    setDeadlineDays(
+                      deadlineDays === "custom" ? null : "custom"
+                    );
                     setCustomDays("");
                   }}
                   className={`px-4 py-2 rounded-xl text-sm font-medium border-2 transition-all active:scale-95 ${
@@ -707,7 +702,6 @@ export default function CreatePostPage() {
                 </button>
               </div>
 
-              {/* ورودی دلخواه */}
               {deadlineDays === "custom" && (
                 <div className="mt-3 animate-fade-in">
                   <div className="relative">
@@ -718,7 +712,7 @@ export default function CreatePostPage() {
                       onChange={(e) => {
                         const v = e.target.value.replace(/\D/g, "");
                         setCustomDays(v);
-                        setErrors({ ...errors, deadline: "" });
+                        setErrors((prev) => ({ ...prev, deadline: "" }));
                       }}
                       placeholder="مثلاً ۱۰"
                       className={`w-full p-3.5 pl-20 bg-white border rounded-xl focus:outline-none focus:ring-2 transition-all ${

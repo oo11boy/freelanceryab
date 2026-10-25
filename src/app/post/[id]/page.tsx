@@ -506,62 +506,18 @@ export default function PostDetailPage() {
             </div>
             <div className="flex-1 min-w-0">
               <div className="font-bold text-gray-800 text-base truncate">
-                {owner?.full_name || 'کاربر همیار'}
+                {owner?.full_name || 'کاربر فریلنسرکار'}
               </div>
               <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                <span className="text-xs bg-amber-50 text-amber-700 px-2 py-0.5 rounded-md font-medium flex items-center gap-1">
-                  <span>⭐</span>
-                  {owner?.rating || 0}
-                </span>
-                {owner && owner.completed_projects > 0 && (
-                  <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-md font-medium flex items-center gap-1">
-                    <span>✓</span> {owner.completed_projects} پروژه موفق
-                  </span>
-                )}
-                {owner?.joined_at && (
-                  <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-md">
-                    عضو از {memberSince(owner.joined_at)}
-                  </span>
-                )}
+        
+           
               </div>
             </div>
           </div>
 
-          {/* سطح تجربه */}
-          {owner?.experience && (
-            <div className="bg-purple-50 rounded-xl p-2.5 mb-3 flex items-center gap-2">
-              <span className="text-lg">🏆</span>
-              <span className="text-xs text-purple-700 font-medium">
-                سطح تجربه: {experienceLabel[owner.experience] || owner.experience}
-              </span>
-            </div>
-          )}
 
-          {/* بیو */}
-          {owner?.bio && (
-            <p className="text-sm text-gray-600 leading-relaxed mb-3 line-clamp-3">
-              {owner.bio}
-            </p>
-          )}
+     
 
-          {/* مهارت‌های کاربر */}
-          {owner?.skills && owner.skills.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mb-3">
-              {owner.skills.slice(0, 4).map((skill, idx) => (
-                <span
-                  key={idx}
-                  className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-md"
-                >
-                  {skill}
-                </span>
-              ))}
-              {owner.skills.length > 4 && (
-                <span className="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded-md">
-                  +{owner.skills.length - 4}
-                </span>
-              )}
-            </div>
-          )}
 
           <Link
             href={`/user/${owner?.id || post.user_id}`}

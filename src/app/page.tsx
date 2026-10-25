@@ -4,6 +4,7 @@ import Link from "next/link";
 import PostCard from "./components/PostCard";
 import { postsAPI } from "./services/api";
 import { CATEGORIES } from "./constants/categories";
+import Header from "./components/Header";
 
 interface Post {
   id: number;
@@ -63,62 +64,7 @@ export default function HomePage() {
   return (
     <div className="pb-2 min-h-screen bg-gray-50">
       {/* هدر */}
-      <div className="bg-white/90 backdrop-blur-md border-b border-gray-100 shadow-sm sticky top-0 z-20">
-        <div className="flex items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white text-lg shadow-md shadow-blue-500/30">
-              🚀
-            </div>
-            <div>
-              <h1 className="text-base font-bold text-gray-800 leading-tight">
-                فریلنسرکار
-              </h1>
-              <p className="text-[10px] text-gray-500">بازار کارهای آنلاین</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={handleRefresh}
-              disabled={refreshing}
-              className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-gray-100 active:scale-95 transition-all disabled:opacity-50"
-              aria-label="بروزرسانی"
-            >
-              <svg
-                className={`w-5 h-5 text-gray-700 ${refreshing ? "animate-spin" : ""}`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                />
-              </svg>
-            </button>
-            <Link
-              href="/notifications"
-              className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-gray-100 active:scale-95 transition-all"
-              aria-label="اعلانات"
-            >
-              <svg
-                className="w-5 h-5 text-gray-700"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-                />
-              </svg>
-            </Link>
-          </div>
-        </div>
-      </div>
+  <Header/>
 
       {/* هیرو کارت */}
       <div className="px-4 pt-4">

@@ -30,6 +30,16 @@ export default function Header() {
     setMenuOpen(false);
   }, [pathname]);
 
+  // بستن منو با کلید Escape
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [menuOpen]);
+
   // پنهان کردن هدر در صفحه چت (مثل BottomNav)
   if (hideBottomNav) return null;
 
@@ -93,6 +103,8 @@ export default function Header() {
                   onClick={() => setMenuOpen((v) => !v)}
                   className="flex items-center gap-2 rounded-full pl-1 pr-2 py-1 hover:bg-gray-100 active:scale-95 transition-all"
                   aria-label="منوی کاربر"
+                  aria-expanded={menuOpen}
+                  aria-haspopup="menu"
                 >
                   <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold shadow-sm">
                     {displayName.charAt(0)}
@@ -116,11 +128,14 @@ export default function Header() {
 
                 {/* منوی کشویی */}
                 {menuOpen && (
-                  <div className="absolute left-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-xl border border-gray-100 py-1.5 animate-dropdown z-50 overflow-hidden">
+                  <div
+                    role="menu"
+                    className="absolute left-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-xl border border-gray-100 animate-dropdown z-50 overflow-hidden"
+                  >
                     {/* اطلاعات کاربر */}
-                    <div className="px-4 py-3 border-b border-gray-100">
+                    <div className="px-4 py-3.5 bg-gradient-to-br from-blue-50 to-indigo-50 border-b border-gray-100">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-base font-bold">
+                        <div className="w-11 h-11 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-base font-bold shadow-md ring-2 ring-white">
                           {displayName.charAt(0)}
                         </div>
                         <div className="min-w-0 flex-1">
@@ -140,19 +155,27 @@ export default function Header() {
                       </div>
                     </div>
 
-                    {/* آیتم‌های منو */}
+                    {/* بخش اصلی */}
                     <div className="py-1">
+                      <div className="px-4 pt-2 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                        حساب من
+                      </div>
                       {[
                         { href: "/profile", icon: "👤", label: "پروفایل من" },
+                        {
+                          href: "/profile?tab=posts",
+                          icon: "📝",
+                          label: "آگهی‌های من",
+                        },
                         {
                           href: "/profile?tab=saved",
                           icon: "❤️",
                           label: "ذخیره‌شده‌ها",
                         },
                         {
-                          href: "/profile?tab=posts",
-                          icon: "📝",
-                          label: "آگهی‌های من",
+                          href: "/notifications",
+                          icon: "🔔",
+                          label: "اعلانات",
                         },
                       ].map((item) => (
                         <Link
@@ -160,8 +183,11 @@ export default function Header() {
                           href={item.href}
                           onClick={() => setMenuOpen(false)}
                           className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                          role="menuitem"
                         >
-                          <span className="text-base">{item.icon}</span>
+                          <span className="text-base w-5 text-center">
+                            {item.icon}
+                          </span>
                           <span className="text-sm text-gray-700">
                             {item.label}
                           </span>
@@ -169,12 +195,45 @@ export default function Header() {
                       ))}
                     </div>
 
+                    {/* بخش پشتیبانی و اطلاعات */}
+                    <div className="py-1 border-t border-gray-100">
+                      <div className="px-4 pt-2 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                        بیشتر
+                      </div>
+                      {[
+                        {
+                          href: "/rules",
+                          icon: "📜",
+                          label: "قوانین و مقررات",
+                        },
+                        { href: "/about", icon: "📖", label: "درباره ما" },
+                        { href: "/contact", icon: "📞", label: "تماس با ما" },
+                      ].map((item) => (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          onClick={() => setMenuOpen(false)}
+                          className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                          role="menuitem"
+                        >
+                          <span className="text-base w-5 text-center">
+                            {item.icon}
+                          </span>
+                          <span className="text-sm text-gray-700">
+                            {item.label}
+                          </span>
+                        </Link>
+                      ))}
+                    </div>
+
+                    {/* دکمه خروج */}
                     <div className="border-t border-gray-100 py-1">
                       <button
                         onClick={handleLogout}
                         className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-red-50 active:bg-red-100 transition-colors text-right"
+                        role="menuitem"
                       >
-                        <span className="text-base">🚪</span>
+                        <span className="text-base w-5 text-center">🚪</span>
                         <span className="text-sm text-red-600 font-medium">
                           خروج از حساب
                         </span>
