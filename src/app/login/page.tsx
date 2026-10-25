@@ -6,6 +6,13 @@ import Link from "next/link";
 import { authAPI } from "../services/api";
 import { useAuth } from "../hooks/useAuth";
 
+// تبدیل ارقام فارسی/عربی به لاتین و حذف غیررقم
+const normalizeDigits = (s: string) =>
+  s
+    .replace(/[۰-۹]/g, (d) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(d)))
+    .replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d)))
+    .replace(/\D/g, "");
+
 export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuth();
@@ -17,6 +24,7 @@ export default function LoginPage() {
   const [timer, setTimer] = useState(0);
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const hasSubmittedRef = useRef(false);
 
   // تایمر برای ارسال مجدد کد
   useEffect(() => {
@@ -48,6 +56,7 @@ export default function LoginPage() {
       const data = await authAPI.sendOTP(phone);
       setStep("otp");
       setTimer(120);
+      hasSubmittedRef.current = false;
       if (data.debug_code) {
         console.log("کد تست:", data.debug_code);
       }
@@ -58,13 +67,14 @@ export default function LoginPage() {
     }
   };
 
-  // تأیید کد
-  const handleVerifyOTP = async () => {
-    const otpCode = otp.join("");
+  // تأیید کد (کد می‌تواند صریح پاس داده شود)
+  const handleVerifyOTP = async (code?: string) => {
+    const otpCode = code ?? otp.join("");
     if (otpCode.length !== 5) {
       setError("کد تأیید ۵ رقمی را کامل وارد کنید");
       return;
     }
+    if (loading) return;
 
     setLoading(true);
     setError("");
@@ -83,25 +93,39 @@ export default function LoginPage() {
       }
     } catch (err: any) {
       setError(err.message);
+      // اجازه بده کاربر دوباره تلاش کنه
+      hasSubmittedRef.current = false;
     } finally {
       setLoading(false);
     }
   };
 
+  // auto-submit وقتی ۵ رقم کامل شد (فقط یک بار)
+  useEffect(() => {
+    const code = otp.join("");
+    if (
+      step === "otp" &&
+      code.length === 5 &&
+      !hasSubmittedRef.current &&
+      !loading
+    ) {
+      hasSubmittedRef.current = true;
+      handleVerifyOTP(code);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [otp, step]);
+
   const handleOtpChange = (index: number, value: string) => {
-    if (value && !/^\d+$/.test(value)) return;
+    const clean = normalizeDigits(value).slice(-1);
+    if (value && !clean) return; // فقط رقم قبول کن
 
     const newOtp = [...otp];
-    newOtp[index] = value.slice(0, 1);
+    newOtp[index] = clean;
     setOtp(newOtp);
+    setError("");
 
-    if (value && index < 4) {
+    if (clean && index < 4) {
       inputRefs.current[index + 1]?.focus();
-    }
-
-    // اگر همه فیلدها پر شد، خودکار تأیید کن
-    if (value && index === 4 && newOtp.every((d) => d !== "")) {
-      setTimeout(() => handleVerifyOTP(), 500);
     }
   };
 
@@ -116,6 +140,7 @@ export default function LoginPage() {
 
   const handleResendCode = async () => {
     if (timer > 0) return;
+    hasSubmittedRef.current = false;
     await handleSendOTP();
   };
 
@@ -123,6 +148,7 @@ export default function LoginPage() {
     setStep("phone");
     setOtp(["", "", "", "", ""]);
     setError("");
+    hasSubmittedRef.current = false;
   };
 
   return (
@@ -148,11 +174,13 @@ export default function LoginPage() {
                 </span>
                 <input
                   type="tel"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  onKeyPress={(e) => e.key === "Enter" && handleSendOTP()}
-                  placeholder="۰۹۱۲۳۴۵۶۷۸۹"
-                  className="w-full p-3 pr-12 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg"
+                  onChange={(e) => setPhone(normalizeDigits(e.target.value))}
+                  onKeyDown={(e) => e.key === "Enter" && handleSendOTP()}
+                  placeholder="09123456789"
+                  className="w-full p-3 pr-12 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg text-center"
                   dir="ltr"
                   autoFocus
                 />
@@ -193,7 +221,10 @@ export default function LoginPage() {
             <div className="text-center">
               <div className="text-4xl mb-2">📨</div>
               <p className="text-gray-700">کد تأیید به شماره</p>
-              <p className="font-bold text-blue-600 text-lg mt-1">
+              <p
+                dir="ltr"
+                className="font-bold text-blue-600 text-lg mt-1 text-center"
+              >
                 {phone.slice(0, 4)}***{phone.slice(7)}
               </p>
               <button
@@ -208,7 +239,10 @@ export default function LoginPage() {
               <label className="block text-sm font-semibold text-gray-700 mb-3 text-center">
                 کد ۵ رقمی را وارد کنید
               </label>
-              <div className="flex justify-center flex-row-reverse gap-2 md:gap-3">
+              <div
+                dir="ltr"
+                className="flex justify-center gap-2 md:gap-3"
+              >
                 {otp.map((digit, index) => (
                   <input
                     key={index}
@@ -216,11 +250,15 @@ export default function LoginPage() {
                       inputRefs.current[index] = el;
                     }}
                     type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     maxLength={1}
                     value={digit}
                     onChange={(e) => handleOtpChange(index, e.target.value)}
                     onKeyDown={(e) => handleKeyDown(index, e)}
-                    className="w-12 h-12 md:w-14 md:h-14 text-center text-xl font-bold border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                    disabled={loading}
+                    className="w-12 h-12 md:w-14 md:h-14 text-center text-xl font-bold border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition disabled:bg-gray-100"
+                    dir="ltr"
                   />
                 ))}
               </div>
@@ -234,7 +272,7 @@ export default function LoginPage() {
             )}
 
             <button
-              onClick={handleVerifyOTP}
+              onClick={() => handleVerifyOTP()}
               disabled={loading}
               className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold text-lg disabled:bg-green-400 transition-all hover:bg-green-700"
             >
@@ -249,9 +287,13 @@ export default function LoginPage() {
                   timer > 0 ? "text-gray-400" : "text-blue-600 hover:underline"
                 }`}
               >
-                {timer > 0
-                  ? `ارسال مجدد کد پس از ${timer} ثانیه`
-                  : "ارسال مجدد کد"}
+                {timer > 0 ? (
+                  <>
+                    ارسال مجدد کد پس از <bdi dir="ltr">{timer}</bdi> ثانیه
+                  </>
+                ) : (
+                  "ارسال مجدد کد"
+                )}
               </button>
             </div>
           </div>

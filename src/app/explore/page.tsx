@@ -22,6 +22,13 @@ const SORT_MAP: Record<string, string> = {
   most_viewed: "most_viewed",
 };
 
+const SORT_OPTIONS = [
+  { value: "newest", label: "جدیدترین", icon: "🕐" },
+  { value: "price_asc", label: "ارزان‌ترین", icon: "📈" },
+  { value: "price_desc", label: "گران‌ترین", icon: "📉" },
+  { value: "most_viewed", label: "پربازدیدترین", icon: "👁️" },
+];
+
 /**
  * کامپوننت داخلی که از useSearchParams استفاده می‌کند.
  * باید حتماً داخل <Suspense> رندر شود تا build تولید شکست نخورد.
@@ -30,9 +37,10 @@ function ExploreContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [search, setSearch] = useState(searchParams.get("q") || "");
+  const [searchInput, setSearchInput] = useState(searchParams.get("q") || "");
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedCategory, setSelectedCategory] = useState(""); // dbName
+  const [selectedCategory, setSelectedCategory] = useState("");
   const [sortBy, setSortBy] = useState("newest");
   const [showFilters, setShowFilters] = useState(false);
   const [priceRange, setPriceRange] = useState({ min: "", max: "" });
@@ -40,14 +48,14 @@ function ExploreContent() {
   useEffect(() => {
     loadPosts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCategory, sortBy]);
+  }, [selectedCategory, sortBy, search]);
 
   const loadPosts = async () => {
     setLoading(true);
     try {
       const params: any = { sort: SORT_MAP[sortBy] || "newest" };
       if (search) params.search = search;
-      if (selectedCategory) params.category = selectedCategory; // ✅ dbName
+      if (selectedCategory) params.category = selectedCategory;
       const data = await postsAPI.getPosts(params);
       setPosts(data.posts || []);
     } catch (error) {
@@ -60,194 +68,391 @@ function ExploreContent() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    loadPosts();
+    setSearch(searchInput.trim());
   };
+
+  const clearFilters = () => {
+    setPriceRange({ min: "", max: "" });
+    setSelectedCategory("");
+    setSortBy("newest");
+    setSearch("");
+    setSearchInput("");
+  };
+
+  const activeFiltersCount =
+    (selectedCategory ? 1 : 0) +
+    (sortBy !== "newest" ? 1 : 0) +
+    (priceRange.min || priceRange.max ? 1 : 0) +
+    (search ? 1 : 0);
 
   const formatTimeAgo = (date: string) => {
     const diff = Date.now() - new Date(date).getTime();
     const hours = Math.floor(diff / (1000 * 60 * 60));
     if (hours < 1) return "لحظاتی پیش";
     if (hours < 24) return `${hours} ساعت پیش`;
-    return `${Math.floor(hours / 24)} روز پیش`;
+    const days = Math.floor(hours / 24);
+    if (days < 30) return `${days} روز پیش`;
+    return `${Math.floor(days / 30)} ماه پیش`;
   };
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
-      <div className="bg-white shadow-sm sticky top-0 z-10 px-4 py-3">
-        <form onSubmit={handleSearch} className="flex gap-2">
-          <div className="flex-1 relative">
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="جستجو در آگهی‌ها..."
-              className="w-full p-3 pr-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <span className="absolute right-3 top-3 text-gray-400">🔍</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setShowFilters(!showFilters)}
-            className="px-4 bg-gray-100 rounded-lg text-xl"
-          >
-            ⚙️
-          </button>
-        </form>
-
-        <div className="flex gap-2 mt-3 overflow-x-auto hide-scrollbar">
-          <button
-            onClick={() => setSelectedCategory("")}
-            className={`px-4 py-1.5 rounded-full text-sm whitespace-nowrap transition ${
-              selectedCategory === ""
-                ? "bg-blue-600 text-white"
-                : "bg-gray-100 text-gray-700"
-            }`}
-          >
-            همه
-          </button>
-          {CATEGORIES.map((cat) => (
+      {/* هدر جستجو */}
+      <div className="bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-sm sticky top-0 z-20">
+        <div className="px-4 pt-3 pb-2">
+          {/* نوار جستجو */}
+          <form onSubmit={handleSearch} className="flex gap-2">
+            <div className="flex-1 relative">
+              <input
+                type="text"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="جستجو در آگهی‌ها..."
+                className="w-full bg-gray-100 border-0 rounded-xl py-3 pr-10 pl-10 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+              </span>
+              {searchInput && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchInput("");
+                    setSearch("");
+                  }}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-gray-300 hover:bg-gray-400 flex items-center justify-center text-white"
+                  aria-label="پاک کردن"
+                >
+                  <svg
+                    className="w-3.5 h-3.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={3}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              )}
+            </div>
             <button
-              key={cat.dbName}
-              onClick={() => setSelectedCategory(cat.dbName)}
-              className={`px-4 py-1.5 rounded-full text-sm whitespace-nowrap transition ${
-                selectedCategory === cat.dbName
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-100 text-gray-700"
+              type="button"
+              onClick={() => setShowFilters(!showFilters)}
+              className={`relative w-[46px] h-[46px] rounded-xl flex items-center justify-center transition-all active:scale-95 shrink-0 ${
+                showFilters || activeFiltersCount > 0
+                  ? "bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/30"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+              aria-label="فیلترها"
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"
+                />
+              </svg>
+              {activeFiltersCount > 0 && !showFilters && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white">
+                  {activeFiltersCount}
+                </span>
+              )}
+            </button>
+          </form>
+
+          {/* چیپ‌های دسته‌بندی */}
+          <div className="flex gap-2 mt-3 overflow-x-auto hide-scrollbar pb-1">
+            <button
+              onClick={() => setSelectedCategory("")}
+              className={`px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all active:scale-95 shrink-0 ${
+                selectedCategory === ""
+                  ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/30"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
               }`}
             >
-              {cat.name}
+              همه
             </button>
-          ))}
+            {CATEGORIES.map((cat) => (
+              <button
+                key={cat.dbName}
+                onClick={() => setSelectedCategory(cat.dbName)}
+                className={`px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all active:scale-95 shrink-0 flex items-center gap-1 ${
+                  selectedCategory === cat.dbName
+                    ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/30"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                <span>{cat.icon}</span>
+                {cat.name}
+              </button>
+            ))}
+          </div>
         </div>
 
+        {/* پنل فیلترها */}
         {showFilters && (
-          <div className="mt-4 p-4 bg-gray-50 rounded-lg border">
-            <h3 className="font-semibold mb-3">فیلترهای پیشرفته</h3>
-            <div className="space-y-3">
+          <div className="border-t border-gray-100 bg-gray-50 px-4 py-4 animate-fade-in">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-bold text-sm text-gray-800 flex items-center gap-1.5">
+                <span>⚙️</span> فیلترهای پیشرفته
+              </h3>
+              {activeFiltersCount > 0 && (
+                <button
+                  onClick={clearFilters}
+                  className="text-xs text-red-500 font-medium hover:underline"
+                >
+                  حذف همه
+                </button>
+              )}
+            </div>
+
+            <div className="space-y-4">
+              {/* محدوده قیمت */}
               <div>
-                <label className="text-sm text-gray-600">محدوده قیمت (تومان)</label>
-                <div className="flex gap-2 mt-1">
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                  محدوده قیمت (تومان)
+                </label>
+                <div className="flex items-center gap-2">
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     placeholder="حداقل"
                     value={priceRange.min}
                     onChange={(e) =>
-                      setPriceRange({ ...priceRange, min: e.target.value })
+                      setPriceRange({
+                        ...priceRange,
+                        min: e.target.value.replace(/\D/g, ""),
+                      })
                     }
-                    className="flex-1 p-2 border rounded text-sm"
+                    className="flex-1 p-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    dir="ltr"
                   />
-                  <span>تا</span>
+                  <span className="text-xs text-gray-500 shrink-0">تا</span>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     placeholder="حداکثر"
                     value={priceRange.max}
                     onChange={(e) =>
-                      setPriceRange({ ...priceRange, max: e.target.value })
+                      setPriceRange({
+                        ...priceRange,
+                        max: e.target.value.replace(/\D/g, ""),
+                      })
                     }
-                    className="flex-1 p-2 border rounded text-sm"
+                    className="flex-1 p-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    dir="ltr"
                   />
                 </div>
               </div>
+
+              {/* مرتب‌سازی */}
               <div>
-                <label className="text-sm text-gray-600">مرتب‌سازی</label>
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="w-full p-2 border rounded mt-1"
-                >
-                  <option value="newest">جدیدترین</option>
-                  <option value="price_asc">ارزان‌ترین</option>
-                  <option value="price_desc">گران‌ترین</option>
-                  <option value="most_viewed">پربازدیدترین</option>
-                </select>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                  مرتب‌سازی
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {SORT_OPTIONS.map((opt) => {
+                    const isActive = sortBy === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setSortBy(opt.value)}
+                        className={`p-2.5 rounded-xl text-xs font-medium transition-all active:scale-95 flex items-center justify-center gap-1.5 ${
+                          isActive
+                            ? "bg-blue-50 border-2 border-blue-500 text-blue-700"
+                            : "bg-white border-2 border-gray-200 text-gray-600 hover:border-gray-300"
+                        }`}
+                      >
+                        <span>{opt.icon}</span>
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-              <button
-                onClick={() => {
-                  setPriceRange({ min: "", max: "" });
-                  setSelectedCategory("");
-                  setSortBy("newest");
-                }}
-                className="w-full text-blue-600 text-sm py-2"
-              >
-                حذف همه فیلترها
-              </button>
             </div>
           </div>
         )}
       </div>
 
+      {/* محتوا */}
       <div className="px-4 mt-3">
-        <p className="text-sm text-gray-500 mb-3">
-          {loading ? "در حال جستجو..." : `${posts.length} آگهی یافت شد`}
-        </p>
+        {/* نوار نتایج */}
+        {!loading && (
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs text-gray-500">
+              <span className="font-bold text-gray-800">{posts.length}</span>{" "}
+              آگهی یافت شد
+            </p>
+            {activeFiltersCount > 0 && (
+              <button
+                onClick={clearFilters}
+                className="text-xs text-blue-600 font-medium flex items-center gap-1 hover:underline"
+              >
+                <svg
+                  className="w-3 h-3"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2.5}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+                پاک کردن فیلترها
+              </button>
+            )}
+          </div>
+        )}
 
         {loading ? (
           <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
+            {[1, 2, 3, 4].map((i) => (
               <div
                 key={i}
-                className="bg-white rounded-lg p-4 flex gap-3 animate-pulse"
+                className="bg-white rounded-2xl p-4 shadow-sm animate-pulse"
               >
-                <div className="w-20 h-20 bg-gray-200 rounded-md" />
-                <div className="flex-1">
-                  <div className="h-5 bg-gray-200 rounded w-3/4 mb-2" />
-                  <div className="h-4 bg-gray-200 rounded w-1/2" />
+                <div className="flex gap-3">
+                  <div className="w-20 h-20 bg-gray-200 rounded-xl shrink-0" />
+                  <div className="flex-1">
+                    <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
+                    <div className="h-3 bg-gray-100 rounded w-1/2 mb-2" />
+                    <div className="flex gap-2 mt-3">
+                      <div className="h-5 bg-gray-100 rounded-full w-16" />
+                      <div className="h-5 bg-gray-100 rounded-full w-20" />
+                    </div>
+                  </div>
                 </div>
               </div>
             ))}
           </div>
         ) : posts.length > 0 ? (
-          posts.map((post) => (
-            <PostCard
-              key={post.id}
-              id={post.id}
-              title={post.title}
-              price={post.price}
-              category={post.category}
-              location={post.location || "آنلاین"}
-              timeAgo={formatTimeAgo(post.created_at)}
-            />
-          ))
+          <div className="space-y-3">
+            {posts.map((post) => (
+              <PostCard
+                key={post.id}
+                id={post.id}
+                title={post.title}
+                price={post.price}
+                category={post.category}
+                location={post.location || "آنلاین"}
+                timeAgo={formatTimeAgo(post.created_at)}
+              />
+            ))}
+          </div>
         ) : (
-          <div className="text-center py-20 text-gray-500">
-            <div className="text-6xl mb-4">🔍</div>
-            <p className="text-lg font-semibold mb-2">نتیجه‌ای یافت نشد</p>
-            <p className="text-sm">سعی کنید با کلمات دیگری جستجو کنید</p>
+          <div className="bg-white rounded-2xl p-10 text-center shadow-sm mt-4">
+            <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-blue-50 to-purple-100 flex items-center justify-center text-4xl">
+              🔍
+            </div>
+            <p className="text-gray-700 font-semibold mb-1">
+              نتیجه‌ای یافت نشد
+            </p>
+            <p className="text-sm text-gray-500 mb-5">
+              {search
+                ? `هیچ آگهی‌ای برای «${search}» پیدا نشد`
+                : "با کلمات کلیدی دیگری جستجو کنید"}
+            </p>
+            {activeFiltersCount > 0 ? (
+              <button
+                onClick={clearFilters}
+                className="inline-block bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-2.5 rounded-xl font-semibold text-sm shadow-lg shadow-blue-500/30 hover:shadow-xl active:scale-[0.98] transition-all"
+              >
+                پاک کردن فیلترها
+              </button>
+            ) : (
+              <button
+                onClick={() => router.push("/create-post")}
+                className="inline-block bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-2.5 rounded-xl font-semibold text-sm shadow-lg shadow-blue-500/30 hover:shadow-xl active:scale-[0.98] transition-all"
+              >
+                ثبت آگهی جدید
+              </button>
+            )}
           </div>
         )}
       </div>
+
+      <style jsx>{`
+        @keyframes fade-in {
+          from {
+            opacity: 0;
+            transform: translateY(-4px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        .animate-fade-in {
+          animation: fade-in 0.2s ease-out;
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+        .hide-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+      `}</style>
     </div>
   );
 }
 
 /**
  * Fallback هنگام بارگذاری (Suspense boundary).
- * می‌توانید اسکلتون دلخواه بگذارید.
  */
 function ExploreFallback() {
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
-      <div className="bg-white shadow-sm sticky top-0 z-10 px-4 py-3">
-        <div className="h-12 bg-gray-200 rounded-lg animate-pulse mb-3" />
+      <div className="bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-sm sticky top-0 z-20 px-4 pt-3 pb-2">
+        <div className="h-[46px] bg-gray-100 rounded-xl animate-pulse mb-3" />
         <div className="flex gap-2 overflow-x-auto">
           {[1, 2, 3, 4, 5].map((i) => (
             <div
               key={i}
-              className="h-8 w-20 bg-gray-200 rounded-full animate-pulse flex-shrink-0"
+              className="h-7 w-20 bg-gray-100 rounded-full animate-pulse flex-shrink-0"
             />
           ))}
         </div>
       </div>
       <div className="px-4 mt-3 space-y-3">
-        {[1, 2, 3].map((i) => (
+        {[1, 2, 3, 4].map((i) => (
           <div
             key={i}
-            className="bg-white rounded-lg p-4 flex gap-3 animate-pulse"
+            className="bg-white rounded-2xl p-4 shadow-sm animate-pulse"
           >
-            <div className="w-20 h-20 bg-gray-200 rounded-md" />
-            <div className="flex-1">
-              <div className="h-5 bg-gray-200 rounded w-3/4 mb-2" />
-              <div className="h-4 bg-gray-200 rounded w-1/2" />
+            <div className="flex gap-3">
+              <div className="w-20 h-20 bg-gray-200 rounded-xl shrink-0" />
+              <div className="flex-1">
+                <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
+                <div className="h-3 bg-gray-100 rounded w-1/2" />
+              </div>
             </div>
           </div>
         ))}
@@ -258,7 +463,6 @@ function ExploreFallback() {
 
 /**
  * کامپوننت پوسته — این همان چیزی است که Next.js به عنوان page می‌شناسد.
- * نکته کلیدی: useSearchParams فقط داخل <Suspense> استفاده می‌شود.
  */
 export default function ExplorePage() {
   return (

@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/app/hooks/useAuth';
+import { useUILayout } from '@/app/hooks/useUILayout';
 import { notificationsAPI } from '@/app/services/api';
 
 const navItems = [
@@ -16,14 +17,13 @@ const navItems = [
 export default function BottomNav() {
   const pathname = usePathname();
   const { token } = useAuth();
+  const { hideBottomNav } = useUILayout();
   const [showMore, setShowMore] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [unreadMessages, setUnreadMessages] = useState(0);
 
   useEffect(() => {
-    if (token) {
-      loadNotifications();
-    }
+    if (token) loadNotifications();
   }, [token]);
 
   const loadNotifications = async () => {
@@ -35,12 +35,17 @@ export default function BottomNav() {
     }
   };
 
+  // اگه در حالت چت باز هستیم، کلاً رندر نکن
+  if (hideBottomNav) return null;
+
   return (
     <>
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-50 max-w-md mx-auto">
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-40 max-w-md mx-auto pb-[env(safe-area-inset-bottom)]">
         <div className="flex justify-around items-center py-2">
           {navItems.map((item) => {
-            const isActive = pathname === item.href;
+            const isActive =
+              pathname === item.href ||
+              (item.href !== '/' && pathname.startsWith(item.href));
             let badge = null;
             if (item.name === 'پیام‌ها' && unreadMessages > 0) {
               badge = unreadMessages;
@@ -80,33 +85,31 @@ export default function BottomNav() {
         </div>
       </div>
 
-      {/* مودال بیشتر */}
       {showMore && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end justify-center">
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center">
           <div className="bg-white w-full max-w-md rounded-t-2xl p-6 animate-slide-up">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-bold">بیشتر</h3>
-              <button onClick={() => setShowMore(false)} className="text-2xl">✕</button>
+              <button onClick={() => setShowMore(false)} className="text-2xl">
+                ✕
+              </button>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <Link href="/notifications" onClick={() => setShowMore(false)} className="p-4 bg-gray-50 rounded-lg text-center hover:bg-gray-100 relative">
-                <div className="text-2xl mb-1">🔔</div>
-                <div>اعلانات</div>
-                {unreadCount > 0 && (
-                  <span className="absolute top-2 right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                    {unreadCount}
-                  </span>
-                )}
-              </Link>
-              <Link href="/saved" onClick={() => setShowMore(false)} className="p-4 bg-gray-50 rounded-lg text-center hover:bg-gray-100">
-                <div className="text-2xl mb-1">❤️</div>
-                <div>ذخیره شده‌ها</div>
-              </Link>
-              <Link href="/rules" onClick={() => setShowMore(false)} className="p-4 bg-gray-50 rounded-lg text-center hover:bg-gray-100">
+       
+        
+              <Link
+                href="/rules"
+                onClick={() => setShowMore(false)}
+                className="p-4 bg-gray-50 rounded-lg text-center hover:bg-gray-100"
+              >
                 <div className="text-2xl mb-1">📜</div>
                 <div>قوانین</div>
               </Link>
-              <Link href="/about" onClick={() => setShowMore(false)} className="p-4 bg-gray-50 rounded-lg text-center hover:bg-gray-100">
+              <Link
+                href="/about"
+                onClick={() => setShowMore(false)}
+                className="p-4 bg-gray-50 rounded-lg text-center hover:bg-gray-100"
+              >
                 <div className="text-2xl mb-1">📖</div>
                 <div>درباره ما</div>
               </Link>

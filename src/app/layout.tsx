@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import BottomNav from "./components/BottomNav";
 import { AuthProvider } from "./hooks/useAuth";
+import { UIProvider } from "./hooks/useUILayout";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -33,8 +34,10 @@ export default function RootLayout({
         className="max-w-md mx-auto bg-gray-100 relative pb-20"
       >
         <AuthProvider>
-          <div className="min-h-screen">{children}</div>
-          <BottomNav />
+          <UIProvider>
+            {children}
+            <BottomNav />
+          </UIProvider>
         </AuthProvider>
       </body>
     </html>

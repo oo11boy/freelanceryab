@@ -5,7 +5,7 @@ interface PostCardProps {
   id: number;
   title: string;
   price: string;
-  category: string;   // مقدار دیتابیس (مثل "برنامه‌نویسی و وب")
+  category: string;
   location: string;
   timeAgo: string;
   image?: string;
@@ -18,33 +18,97 @@ export default function PostCard({
   category,
   location,
   timeAgo,
+  image,
 }: PostCardProps) {
-  // تبدیل dbName به نام خوانا
   const displayCategory = categoryLabel(category) || category;
+  const isContact = !price || price === "توافقی" || price === "0";
 
   return (
-    <div className="bg-white rounded-lg shadow-sm mb-3 p-4 flex gap-3 cursor-pointer hover:bg-gray-50 transition">
-      <div className="w-20 h-20 bg-gray-200 rounded-md flex-shrink-0 flex items-center justify-center">
-        <span className="text-gray-400 text-3xl">📄</span>
+    <Link
+      href={`/post/${id}`}
+      className="group block bg-white rounded-2xl p-3.5 shadow-sm border border-gray-100 hover:shadow-md hover:border-blue-100 active:scale-[0.99] transition-all"
+    >
+      <div className="flex gap-3">
+        {/* تصویر / آیکون */}
+        <div className="relative w-20 h-20 rounded-xl overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center shrink-0">
+          {image ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={image}
+              alt={title}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            />
+          ) : (
+            <span className="text-3xl">📄</span>
+          )}
+        </div>
+
+        {/* محتوا */}
+        <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
+          {/* عنوان */}
+          <h3 className="font-semibold text-gray-800 text-sm leading-relaxed line-clamp-2 group-hover:text-blue-700 transition-colors">
+            {title}
+          </h3>
+
+          {/* دسته و موقعیت */}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-xs text-gray-500">
+            <span className="flex items-center gap-1 min-w-0">
+              <span className="text-sm shrink-0">📂</span>
+              <span className="truncate">{displayCategory}</span>
+            </span>
+            <span className="flex items-center gap-1 min-w-0">
+              <svg
+                className="w-3.5 h-3.5 shrink-0"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                />
+              </svg>
+              <span className="truncate">{location}</span>
+            </span>
+          </div>
+
+          {/* قیمت و زمان */}
+          <div className="flex items-end justify-between mt-2">
+            <span className="text-xs text-gray-400 flex items-center gap-1">
+              <svg
+                className="w-3 h-3"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              {timeAgo}
+            </span>
+            <span
+              className={`text-sm font-bold shrink-0 ${
+                isContact ? "text-amber-600" : "text-green-700"
+              }`}
+              dir={!isContact ? "ltr" : "rtl"}
+            >
+              {isContact ? "توافقی" : price}
+            </span>
+          </div>
+        </div>
       </div>
-
-      <Link href={`/post/${id}`} className="flex-1">
-        <div className="flex justify-between items-start">
-          <h3 className="font-semibold text-gray-800 text-base line-clamp-2">{title}</h3>
-          <span className="text-green-700 font-bold mr-2 whitespace-nowrap">{price}</span>
-        </div>
-
-        <div className="flex gap-3 mt-2 text-xs text-gray-500">
-          <span className="flex items-center gap-1">
-            <span>📂</span> {displayCategory}
-          </span>
-          <span className="flex items-center gap-1">
-            <span>📍</span> {location}
-          </span>
-        </div>
-
-        <div className="text-xs text-gray-400 mt-2">{timeAgo}</div>
-      </Link>
-    </div>
+    </Link>
   );
 }

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/hooks/useAuth';
+import { useUILayout } from '@/app/hooks/useUILayout';
 import { messagesAPI } from '@/app/services/api';
 import { initializeSocket, getSocket } from '@/app/services/socket';
 
@@ -30,6 +31,7 @@ interface Conversation {
 export default function MessagesPage() {
   const router = useRouter();
   const { user, token, loading: authLoading } = useAuth();
+  const { setHideBottomNav } = useUILayout();
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedChat, setSelectedChat] = useState<number | null>(null);
@@ -40,17 +42,71 @@ export default function MessagesPage() {
   const [isConnected, setIsConnected] = useState(false);
   const [typingUsers, setTypingUsers] = useState<Set<number>>(new Set());
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const selectedChatRef = useRef<number | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  // همگام‌سازی selectedChat با ref
   useEffect(() => {
     selectedChatRef.current = selectedChat;
   }, [selectedChat]);
 
   // -------------------------------------------------
-  // راه‌اندازی Socket و شنونده‌ها
+  // پنهان کردن BottomNav هنگام باز بودن چت
+  // -------------------------------------------------
+  useEffect(() => {
+    setHideBottomNav(!!selectedChat);
+    return () => setHideBottomNav(false);
+  }, [selectedChat, setHideBottomNav]);
+
+  // -------------------------------------------------
+  // مدیریت ارتفاع چت با VisualViewport (کیبورد موبایل)
+  // -------------------------------------------------
+  useEffect(() => {
+    if (!selectedChat) return;
+    const vv = window.visualViewport;
+    if (!vv) return;
+
+    const onResize = () => {
+      const container = chatContainerRef.current;
+      if (container) {
+        container.style.height = `${vv.height}px`;
+        container.style.top = `${vv.offsetTop}px`;
+      }
+      scrollToBottom('auto');
+    };
+
+    vv.addEventListener('resize', onResize);
+    vv.addEventListener('scroll', onResize);
+    onResize();
+
+    return () => {
+      vv.removeEventListener('resize', onResize);
+      vv.removeEventListener('scroll', onResize);
+      const container = chatContainerRef.current;
+      if (container) {
+        container.style.height = '';
+        container.style.top = '';
+      }
+    };
+  }, [selectedChat]);
+
+  // -------------------------------------------------
+  // اسکرول به پایین
+  // -------------------------------------------------
+  const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
+    const container = messagesContainerRef.current;
+    if (container) {
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior,
+      });
+    }
+  };
+
+  // -------------------------------------------------
+  // راه‌اندازی Socket
   // -------------------------------------------------
   useEffect(() => {
     if (authLoading) return;
@@ -61,17 +117,9 @@ export default function MessagesPage() {
 
     const socket = initializeSocket(token);
 
-    // --- شنونده‌های اتصال ---
-    const onConnect = () => {
-      console.log('✅ Connected');
-      setIsConnected(true);
-    };
-    const onDisconnect = () => {
-      console.log('❌ Disconnected');
-      setIsConnected(false);
-    };
+    const onConnect = () => setIsConnected(true);
+    const onDisconnect = () => setIsConnected(false);
 
-    // --- شنونده‌های پیام ---
     const onNewMessage = (data: Message) => {
       const currentChat = selectedChatRef.current;
       const myId = user?.id;
@@ -82,12 +130,10 @@ export default function MessagesPage() {
 
       if (isCurrentChat) {
         setMessages((prev) => {
-          // جلوگیری از تکرار
           if (prev.some((m) => m.id === data.id)) return prev;
           return [...prev, data];
         });
 
-        // اگر من گیرنده هستم، پیام را خوانده علامت بزن
         if (data.receiver_id === myId) {
           socket.emit('mark_read', {
             message_id: data.id,
@@ -96,7 +142,6 @@ export default function MessagesPage() {
         }
       }
 
-      // به‌روزرسانی لیست مکالمات
       loadConversations();
     };
 
@@ -118,14 +163,17 @@ export default function MessagesPage() {
       );
     };
 
-    const onConversationRead = ({ conversation_id }: { conversation_id: number }) => {
+    const onConversationRead = ({
+      conversation_id,
+    }: {
+      conversation_id: number;
+    }) => {
       const currentChat = selectedChatRef.current;
       if (conversation_id === currentChat) {
         setMessages((prev) => prev.map((msg) => ({ ...msg, is_read: true })));
       }
     };
 
-    // --- شنونده‌های وضعیت آنلاین ---
     const onOnlineUsers = ({ user_ids }: { user_ids: number[] }) => {
       setConversations((prev) =>
         prev.map((conv) => ({
@@ -151,7 +199,6 @@ export default function MessagesPage() {
       );
     };
 
-    // --- تایپ کردن ---
     const onUserTyping = ({
       user_id,
       is_typing,
@@ -167,13 +214,11 @@ export default function MessagesPage() {
       });
     };
 
-    // --- خطاها ---
     const onMessageError = (data: { error: string }) => {
       console.error('Message error:', data.error);
       alert(data.error);
     };
 
-    // ثبت شنونده‌ها
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
     socket.on('new_message', onNewMessage);
@@ -186,14 +231,10 @@ export default function MessagesPage() {
     socket.on('user_typing', onUserTyping);
     socket.on('message_error', onMessageError);
 
-    // اگر سوکت از قبل متصل است
-    if (socket.connected) {
-      setIsConnected(true);
-    }
+    if (socket.connected) setIsConnected(true);
 
     loadConversations();
 
-    // cleanup
     return () => {
       socket.off('connect', onConnect);
       socket.off('disconnect', onDisconnect);
@@ -211,15 +252,26 @@ export default function MessagesPage() {
   }, [token, authLoading, user?.id]);
 
   // -------------------------------------------------
-  // اسکرول خودکار
+  // اسکرول خودکار وقتی پیام‌ها تغییر کردن
   // -------------------------------------------------
   useEffect(() => {
     if (messages.length > 0) {
-      setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-      }, 100);
+      const t = setTimeout(() => scrollToBottom('smooth'), 100);
+      return () => clearTimeout(t);
     }
   }, [messages]);
+
+  // -------------------------------------------------
+  // فوکوس + اسکرول فوری وقتی چت باز شد
+  // -------------------------------------------------
+  useEffect(() => {
+    if (selectedChat) {
+      const t = setTimeout(() => {
+        scrollToBottom('auto');
+      }, 400);
+      return () => clearTimeout(t);
+    }
+  }, [selectedChat]);
 
   // -------------------------------------------------
   // بارگذاری مکالمات
@@ -242,7 +294,6 @@ export default function MessagesPage() {
       const data = await messagesAPI.getMessages(userId);
       setMessages(data.messages || []);
 
-      // علامت خوانده شدن کل مکالمه
       const socket = getSocket();
       if (socket) {
         socket.emit('mark_conversation_read', { sender_id: userId });
@@ -254,9 +305,6 @@ export default function MessagesPage() {
     }
   };
 
-  // -------------------------------------------------
-  // انتخاب مکالمه
-  // -------------------------------------------------
   const handleSelectChat = async (userId: number) => {
     setSelectedChat(userId);
     await loadMessages(userId);
@@ -278,17 +326,16 @@ export default function MessagesPage() {
         });
         setNewMessage('');
       } else {
-        // fallback به REST API
         await messagesAPI.sendMessage(selectedChat, newMessage.trim());
         setNewMessage('');
         await loadMessages(selectedChat);
       }
 
-      // توقف تایپ
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
       }
       socket?.emit('typing', { receiver_id: selectedChat, is_typing: false });
+      inputRef.current?.focus();
     } catch (error) {
       console.error('خطا:', error);
       alert('خطا در ارسال پیام');
@@ -320,9 +367,41 @@ export default function MessagesPage() {
   // -------------------------------------------------
   const formatTime = (date: string) => {
     try {
-      return new Date(date).toLocaleTimeString('fa-IR', {
-        hour: '2-digit',
-        minute: '2-digit',
+      const d = new Date(date);
+      const now = new Date();
+      const isToday = d.toDateString() === now.toDateString();
+      const yesterday = new Date(now);
+      yesterday.setDate(now.getDate() - 1);
+      const isYesterday = d.toDateString() === yesterday.toDateString();
+
+      if (isToday) {
+        return d.toLocaleTimeString('fa-IR', {
+          hour: '2-digit',
+          minute: '2-digit',
+        });
+      }
+      if (isYesterday) return 'دیروز';
+      return d.toLocaleDateString('fa-IR', {
+        month: 'short',
+        day: 'numeric',
+      });
+    } catch {
+      return '';
+    }
+  };
+
+  const formatDateSeparator = (date: string) => {
+    try {
+      const d = new Date(date);
+      const now = new Date();
+      if (d.toDateString() === now.toDateString()) return 'امروز';
+      const yesterday = new Date(now);
+      yesterday.setDate(now.getDate() - 1);
+      if (d.toDateString() === yesterday.toDateString()) return 'دیروز';
+      return d.toLocaleDateString('fa-IR', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
       });
     } catch {
       return '';
@@ -331,10 +410,10 @@ export default function MessagesPage() {
 
   if (authLoading || !token) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="mt-4 text-gray-600">در حال بارگذاری...</p>
+          <p className="mt-4 text-gray-600 text-sm">در حال بارگذاری...</p>
         </div>
       </div>
     );
@@ -342,191 +421,397 @@ export default function MessagesPage() {
 
   const currentChat = conversations.find((c) => c.user_id === selectedChat);
   const isTyping = selectedChat ? typingUsers.has(selectedChat) : false;
+  const totalUnread = conversations.reduce((s, c) => s + c.unread_count, 0);
 
   return (
-    <div className="min-h-screen bg-gray-50 ">
-      {/* هدر */}
-      <div className="bg-white shadow-sm px-4 py-3 sticky top-0 z-10 flex items-center justify-between">
-        <h1 className="text-xl font-bold text-center flex-1">پیام‌ها</h1>
-        {!isConnected && (
-          <span className="text-xs text-red-500 flex items-center gap-1">
-            <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-            قطع
-          </span>
-        )}
-      </div>
-
+    <div className="min-h-screen bg-gray-50">
       {selectedChat && currentChat ? (
-        // ---------- صفحه چت ----------
-        <div className="flex flex-col h-[calc(100vh-120px)]">
+        // ---------- صفحه چت (fixed + visualViewport) ----------
+        <div
+          ref={chatContainerRef}
+          className="fixed inset-x-0 top-0 flex flex-col bg-gradient-to-b from-blue-50 via-gray-50 to-gray-50 z-30"
+          style={{
+            height: '100dvh',
+            paddingBottom: 'env(safe-area-inset-bottom)',
+          }}
+        >
           {/* هدر چت */}
-          <div className="bg-white px-4 py-3 flex items-center gap-3 border-b sticky top-0 z-10">
+          <div className="bg-white/95 backdrop-blur-md border-b border-gray-200 px-3 py-3 flex items-center gap-2 shrink-0 shadow-sm">
             <button
               onClick={() => setSelectedChat(null)}
-              className="text-2xl"
+              className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-100 active:scale-95 transition-all"
+              aria-label="بازگشت"
             >
-              ←
+              <svg
+                className="w-6 h-6 text-gray-700"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 5l7 7-7 7"
+                />
+              </svg>
             </button>
-            <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <div className="relative">
-                  <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-xl text-white">
-                    {currentChat.user_name?.charAt(0) || '👤'}
-                  </div>
-                  {currentChat.online && (
-                    <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
-                  )}
-                </div>
-                <div>
-                  <div className="font-semibold">{currentChat.user_name}</div>
-                  <div className="text-xs text-gray-500">
-                    {isTyping
-                      ? 'در حال نوشتن...'
-                      : currentChat.online
-                      ? 'آنلاین'
-                      : 'آفلاین'}
-                  </div>
-                </div>
+            <div className="relative">
+              <div className="w-11 h-11 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-lg text-white font-bold shadow-md">
+                {currentChat.user_name?.charAt(0) || '👤'}
+              </div>
+              {currentChat.online && (
+                <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-white shadow" />
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="font-bold text-gray-800 truncate text-sm">
+                {currentChat.user_name}
+              </div>
+              <div className="text-xs text-gray-500 flex items-center gap-1">
+                {isTyping ? (
+                  <span className="text-blue-600 font-medium flex items-center gap-1">
+                    در حال نوشتن
+                    <span className="flex gap-0.5">
+                      <span
+                        className="w-1 h-1 bg-blue-600 rounded-full animate-bounce"
+                        style={{ animationDelay: '0ms' }}
+                      />
+                      <span
+                        className="w-1 h-1 bg-blue-600 rounded-full animate-bounce"
+                        style={{ animationDelay: '150ms' }}
+                      />
+                      <span
+                        className="w-1 h-1 bg-blue-600 rounded-full animate-bounce"
+                        style={{ animationDelay: '300ms' }}
+                      />
+                    </span>
+                  </span>
+                ) : currentChat.online ? (
+                  <span className="text-green-600">آنلاین</span>
+                ) : (
+                  <span>آفلاین</span>
+                )}
               </div>
             </div>
+
+            {/* دکمه مشاهده پروفایل */}
+            <button
+              onClick={() => router.push(`/user/${currentChat.user_id}`)}
+              className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-100 active:scale-95 transition-all shrink-0"
+              aria-label="مشاهده پروفایل"
+            >
+              <svg
+                className="w-5 h-5 text-gray-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                />
+              </svg>
+            </button>
           </div>
 
           {/* پیام‌ها */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          <div
+            ref={messagesContainerRef}
+            className="flex-1 min-h-0 overflow-y-auto px-3 py-4 space-y-2"
+          >
             {loading ? (
-              <div className="text-center py-10 text-gray-500">
-                در حال بارگذاری...
+              <div className="flex flex-col items-center justify-center py-20 text-gray-500">
+                <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-3" />
+                <p className="text-sm">در حال بارگذاری پیام‌ها...</p>
               </div>
             ) : messages.length > 0 ? (
-              messages.map((msg, index) => {
-                const isMe = msg.sender_id === user?.id;
-                const showDate =
-                  index === 0 ||
-                  new Date(msg.created_at).toDateString() !==
-                    new Date(messages[index - 1]?.created_at).toDateString();
+              <>
+                {messages.map((msg, index) => {
+                  const isMe = msg.sender_id === user?.id;
+                  const showDate =
+                    index === 0 ||
+                    new Date(msg.created_at).toDateString() !==
+                      new Date(messages[index - 1]?.created_at).toDateString();
+                  const prevMsg = messages[index - 1];
+                  const showAvatar =
+                    !isMe &&
+                    (index === 0 ||
+                      prevMsg?.sender_id !== msg.sender_id ||
+                      showDate);
 
-                return (
-                  <div key={msg.id}>
-                    {showDate && (
-                      <div className="text-center my-3">
-                        <span className="text-xs text-gray-400 bg-gray-100 px-3 py-1 rounded-full">
-                          {new Date(msg.created_at).toLocaleDateString('fa-IR')}
-                        </span>
-                      </div>
-                    )}
-                    <div
-                      className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}
-                    >
+                  return (
+                    <div key={msg.id}>
+                      {showDate && (
+                        <div className="flex items-center gap-2 my-4">
+                          <div className="flex-1 h-px bg-gray-200" />
+                          <span className="text-xs text-gray-500 bg-white px-3 py-1 rounded-full shadow-sm font-medium">
+                            {formatDateSeparator(msg.created_at)}
+                          </span>
+                          <div className="flex-1 h-px bg-gray-200" />
+                        </div>
+                      )}
                       <div
-                        className={`max-w-[75%] rounded-lg p-3 ${
-                          isMe
-                            ? 'bg-blue-600 text-white rounded-br-none'
-                            : 'bg-gray-200 text-gray-800 rounded-bl-none'
+                        className={`flex items-end gap-1.5 ${
+                          isMe ? 'justify-end' : 'justify-start'
                         }`}
                       >
-                        <p className="text-sm">{msg.text || msg.message}</p>
-                        <p
-                          className={`text-xs mt-1 ${
-                            isMe ? 'text-blue-200' : 'text-gray-500'
+                        {!isMe && (
+                          <div className="w-7 shrink-0">
+                            {showAvatar ? (
+                              <div className="w-7 h-7 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-xs text-white font-bold">
+                                {currentChat.user_name?.charAt(0) || '👤'}
+                              </div>
+                            ) : (
+                              <div className="w-7 h-7" />
+                            )}
+                          </div>
+                        )}
+                        <div
+                          className={`max-w-[78%] rounded-2xl px-3.5 py-2.5 shadow-sm ${
+                            isMe
+                              ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-br-sm'
+                              : 'bg-white text-gray-800 rounded-bl-sm border border-gray-100'
                           }`}
                         >
-                          {formatTime(msg.created_at)}
-                          {isMe && (
-                            <span className="ml-1">
-                              {msg.is_read ? ' ✓✓' : ' ✓'}
-                            </span>
-                          )}
-                        </p>
+                          <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+                            {msg.text || msg.message}
+                          </p>
+                          <div
+                            className={`flex items-center justify-end gap-1 mt-1 text-[10px] ${
+                              isMe ? 'text-blue-100' : 'text-gray-400'
+                            }`}
+                          >
+                            <span>{formatTime(msg.created_at)}</span>
+                            {isMe && (
+                              <span
+                                className={
+                                  msg.is_read
+                                    ? 'text-blue-100'
+                                    : 'text-blue-200/70'
+                                }
+                              >
+                                {msg.is_read ? '✓✓' : '✓'}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                {isTyping && (
+                  <div className="flex items-end gap-1.5 justify-start">
+                    <div className="w-7 h-7 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-xs text-white font-bold">
+                      {currentChat.user_name?.charAt(0) || '👤'}
+                    </div>
+                    <div className="bg-white border border-gray-100 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm">
+                      <div className="flex gap-1">
+                        <span
+                          className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                          style={{ animationDelay: '0ms' }}
+                        />
+                        <span
+                          className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                          style={{ animationDelay: '150ms' }}
+                        />
+                        <span
+                          className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                          style={{ animationDelay: '300ms' }}
+                        />
                       </div>
                     </div>
                   </div>
-                );
-              })
+                )}
+              </>
             ) : (
-              <div className="text-center text-gray-500 py-20">
-                <p>هیچ پیامی وجود ندارد</p>
-                <p className="text-sm mt-2">اولین پیام را شما ارسال کنید</p>
+              <div className="flex flex-col items-center justify-center py-20 text-center px-6">
+                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center text-4xl mb-4">
+                  💬
+                </div>
+                <p className="text-gray-700 font-semibold mb-1">
+                  هنوز پیامی نیست
+                </p>
+                <p className="text-sm text-gray-500">
+                  اولین پیام را شما ارسال کنید
+                </p>
               </div>
             )}
-            <div ref={messagesEndRef} />
           </div>
 
           {/* ورودی پیام */}
-          <div className="bg-white border-t p-3">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={newMessage}
-                onChange={(e) => handleTyping(e.target.value)}
-                onKeyDown={(e) =>
-                  e.key === 'Enter' && !e.shiftKey && handleSendMessage()
-                }
-                placeholder="پیام خود را بنویسید..."
-                className="flex-1 p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                disabled={sending}
-              />
+          <div className="bg-white border-t border-gray-200 px-3 py-2.5 shadow-lg shrink-0">
+            <div className="flex items-end gap-2">
+              <div className="flex-1 relative">
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={newMessage}
+                  onChange={(e) => handleTyping(e.target.value)}
+                  onKeyDown={(e) =>
+                    e.key === 'Enter' && !e.shiftKey && handleSendMessage()
+                  }
+                  placeholder="پیام خود را بنویسید..."
+                  className="w-full bg-gray-100 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                  disabled={sending}
+                />
+              </div>
               <button
                 onClick={handleSendMessage}
                 disabled={sending || !newMessage.trim()}
-                className="bg-blue-600 text-white px-6 rounded-lg disabled:bg-blue-400"
+                className="w-11 h-11 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-blue-500/40 active:scale-95 transition-all shrink-0"
+                aria-label="ارسال"
               >
-                {sending ? '...' : 'ارسال'}
+                {sending ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <svg
+                    className="w-5 h-5 rotate-180"
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+                  </svg>
+                )}
               </button>
             </div>
           </div>
         </div>
       ) : (
         // ---------- لیست مکالمات ----------
-        <div>
-          {conversations.length > 0 ? (
-            conversations.map((conv) => (
-              <div
-                key={conv.user_id}
-                onClick={() => handleSelectChat(conv.user_id)}
-                className="bg-white border-b p-4 flex items-center gap-3 cursor-pointer hover:bg-gray-50 transition"
-              >
-                <div className="relative">
-                  <div className="w-14 h-14 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-2xl text-white">
-                    {conv.user_name?.charAt(0) || '👤'}
-                  </div>
-                  {conv.online && (
-                    <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex justify-between items-start">
-                    <span className="font-semibold">{conv.user_name}</span>
-                    <span className="text-xs text-gray-500 whitespace-nowrap">
-                      {formatTime(conv.last_message_time)}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-600 truncate">
-                    {conv.last_message}
-                  </p>
-                </div>
-                {conv.unread_count > 0 && (
-                  <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
-                    {conv.unread_count > 9 ? '9+' : conv.unread_count}
-                  </div>
+        <>
+          <div className="bg-white/95 backdrop-blur-md border-b border-gray-200 px-4 py-4 sticky top-0 z-10 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-bold text-gray-800">پیام‌ها</h1>
+                {totalUnread > 0 && (
+                  <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                    {totalUnread > 99 ? '99+' : totalUnread}
+                  </span>
                 )}
               </div>
-            ))
-          ) : (
-            <div className="text-center text-gray-500 py-20">
-              <div className="text-6xl mb-4">💬</div>
-              <p className="text-lg font-semibold mb-2">هیچ پیامی ندارید</p>
-              <p className="text-sm">
-                با ارسال پیام به آگهی‌ها، مکالمه خود را شروع کنید
-              </p>
-              <button
-                onClick={() => router.push('/explore')}
-                className="mt-6 bg-blue-600 text-white px-6 py-2 rounded-lg"
-              >
-                جستجوی آگهی
-              </button>
+              <div className="flex items-center gap-1.5">
+                <div
+                  className={`w-2 h-2 rounded-full ${
+                    isConnected ? 'bg-green-500' : 'bg-red-500 animate-pulse'
+                  }`}
+                />
+                <span className="text-xs text-gray-500">
+                  {isConnected ? 'آنلاین' : 'قطع'}
+                </span>
+              </div>
             </div>
-          )}
-        </div>
+          </div>
+
+          <div className="pb-24">
+            {conversations.length > 0 ? (
+              <div className="divide-y divide-gray-100 bg-white">
+                {conversations.map((conv) => (
+                  <div
+                    key={conv.user_id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => handleSelectChat(conv.user_id)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleSelectChat(conv.user_id);
+                      }
+                    }}
+                    className="w-full text-right bg-white hover:bg-gray-50 active:bg-gray-100 px-4 py-3 flex items-center gap-3 transition-colors cursor-pointer"
+                  >
+                    <div className="relative shrink-0">
+                      <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-xl text-white font-bold shadow-md">
+                        {conv.user_name?.charAt(0) || '👤'}
+                      </div>
+                      {conv.online && (
+                        <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-white shadow" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-center gap-2 mb-0.5">
+                        <div className="flex items-center gap-1 min-w-0">
+                          <span
+                            className={`font-semibold truncate ${
+                              conv.unread_count > 0
+                                ? 'text-gray-900'
+                                : 'text-gray-700'
+                            }`}
+                          >
+                            {conv.user_name}
+                          </span>
+                          {/* دکمه پروفایل */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push(`/user/${conv.user_id}`);
+                            }}
+                            className="w-6 h-6 rounded-full flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-blue-50 active:scale-90 transition-all shrink-0"
+                            aria-label={`مشاهده پروفایل ${conv.user_name}`}
+                            title="مشاهده پروفایل"
+                          >
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                              />
+                            </svg>
+                          </button>
+                        </div>
+                        <span className="text-xs text-gray-400 whitespace-nowrap shrink-0">
+                          {formatTime(conv.last_message_time)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center gap-2">
+                        <p
+                          className={`text-sm truncate ${
+                            conv.unread_count > 0
+                              ? 'text-gray-700 font-medium'
+                              : 'text-gray-500'
+                          }`}
+                        >
+                          {conv.last_message}
+                        </p>
+                        {conv.unread_count > 0 && (
+                          <div className="min-w-[22px] h-[22px] px-1.5 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 shadow">
+                            {conv.unread_count > 9 ? '9+' : conv.unread_count}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-20 px-6 text-center min-h-[60vh]">
+                <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-50 to-purple-100 flex items-center justify-center text-5xl mb-5">
+                  💬
+                </div>
+                <p className="text-lg font-bold text-gray-800 mb-2">
+                  هیچ پیامی ندارید
+                </p>
+                <p className="text-sm text-gray-500 mb-8 leading-relaxed max-w-xs">
+                  با ارسال پیام به آگهی‌ها، مکالمه خود را شروع کنید
+                </p>
+                <button
+                  onClick={() => router.push('/explore')}
+                  className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-3 rounded-xl font-semibold shadow-lg shadow-blue-500/30 hover:shadow-xl transition-all active:scale-[0.98]"
+                >
+                  جستجوی آگهی
+                </button>
+              </div>
+            )}
+          </div>
+        </>
       )}
     </div>
   );

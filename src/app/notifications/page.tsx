@@ -15,12 +15,43 @@ interface Notification {
   created_at: string;
 }
 
+const TYPE_CONFIG: Record<
+  string,
+  { icon: string; bg: string; iconBg: string; label: string }
+> = {
+  message: {
+    icon: '💬',
+    bg: 'from-blue-50 to-indigo-50',
+    iconBg: 'bg-blue-100 text-blue-600',
+    label: 'پیام',
+  },
+  offer: {
+    icon: '🤝',
+    bg: 'from-green-50 to-emerald-50',
+    iconBg: 'bg-green-100 text-green-600',
+    label: 'پیشنهاد',
+  },
+  system: {
+    icon: '⚙️',
+    bg: 'from-gray-50 to-slate-50',
+    iconBg: 'bg-gray-100 text-gray-600',
+    label: 'سیستمی',
+  },
+  reminder: {
+    icon: '⏰',
+    bg: 'from-amber-50 to-orange-50',
+    iconBg: 'bg-amber-100 text-amber-600',
+    label: 'یادآوری',
+  },
+};
+
 export default function NotificationsPage() {
   const router = useRouter();
   const { token } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
+  const [markingAll, setMarkingAll] = useState(false);
 
   useEffect(() => {
     if (!token) {
@@ -28,12 +59,13 @@ export default function NotificationsPage() {
       return;
     }
     loadNotifications();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   const loadNotifications = async () => {
     try {
       const data = await notificationsAPI.getNotifications(50);
-      setNotifications(data.notifications);
+      setNotifications(data.notifications || []);
     } catch (error) {
       console.error('خطا:', error);
     } finally {
@@ -44,8 +76,8 @@ export default function NotificationsPage() {
   const markAsRead = async (id: number) => {
     try {
       await notificationsAPI.markAsRead(id);
-      setNotifications(prev =>
-        prev.map(n => (n.id === id ? { ...n, is_read: true } : n))
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
       );
     } catch (error) {
       console.error('خطا:', error);
@@ -53,11 +85,15 @@ export default function NotificationsPage() {
   };
 
   const markAllAsRead = async () => {
+    if (markingAll) return;
+    setMarkingAll(true);
     try {
       await notificationsAPI.markAsRead(undefined, true);
-      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
     } catch (error) {
       console.error('خطا:', error);
+    } finally {
+      setMarkingAll(false);
     }
   };
 
@@ -70,138 +106,277 @@ export default function NotificationsPage() {
     }
   };
 
-  const getIcon = (type: string) => {
-    switch (type) {
-      case 'message':
-        return '💬';
-      case 'offer':
-        return '🤝';
-      case 'system':
-        return '⚙️';
-      case 'reminder':
-        return '⏰';
-      default:
-        return '📢';
-    }
-  };
-
-  const getBgColor = (type: string) => {
-    switch (type) {
-      case 'message':
-        return 'bg-blue-50';
-      case 'offer':
-        return 'bg-green-50';
-      case 'system':
-        return 'bg-gray-50';
-      case 'reminder':
-        return 'bg-yellow-50';
-      default:
-        return 'bg-gray-50';
-    }
-  };
-
   const formatDate = (date: string) => {
-    const now = new Date();
-    const notifDate = new Date(date);
-    const diffHours = Math.floor((now.getTime() - notifDate.getTime()) / (1000 * 60 * 60));
-    
-    if (diffHours < 1) return 'لحظاتی پیش';
-    if (diffHours < 24) return `${diffHours} ساعت پیش`;
-    if (diffHours < 48) return 'دیروز';
-    return notifDate.toLocaleDateString('fa-IR');
+    try {
+      const now = new Date();
+      const notifDate = new Date(date);
+      const diffMs = now.getTime() - notifDate.getTime();
+      const diffMins = Math.floor(diffMs / (1000 * 60));
+      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+      const diffDays = Math.floor(diffHours / 24);
+
+      if (diffMins < 1) return 'لحظاتی پیش';
+      if (diffMins < 60) return `${diffMins} دقیقه پیش`;
+      if (diffHours < 24) return `${diffHours} ساعت پیش`;
+      if (diffDays === 1) return 'دیروز';
+      if (diffDays < 7) return `${diffDays} روز پیش`;
+      return notifDate.toLocaleDateString('fa-IR', {
+        month: 'short',
+        day: 'numeric',
+      });
+    } catch {
+      return '';
+    }
   };
 
-  const filteredNotifications = notifications.filter(n =>
+  const filteredNotifications = notifications.filter((n) =>
     filter === 'all' ? true : !n.is_read
   );
+  const unreadCount = notifications.filter((n) => !n.is_read).length;
 
-  const unreadCount = notifications.filter(n => !n.is_read).length;
-
-  if (!token) {
-    return null;
-  }
+  if (!token) return null;
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
       {/* هدر */}
-      <div className="bg-white shadow-sm px-4 py-3 sticky top-0 z-10">
-        <div className="flex items-center justify-between">
-          <button onClick={() => router.back()} className="text-gray-600 text-2xl">
-            ←
+      <div className="bg-white/95 backdrop-blur-md border-b border-gray-200 shadow-sm sticky top-0 z-20">
+        <div className="px-3 py-3 flex items-center gap-2">
+          <button
+            onClick={() => router.back()}
+            className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-100 active:scale-95 transition-all"
+            aria-label="بازگشت"
+          >
+            <svg
+              className="w-6 h-6 text-gray-700"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 5l7 7-7 7"
+              />
+            </svg>
           </button>
-          <h1 className="text-xl font-bold">اعلانات</h1>
-          {unreadCount > 0 && (
-            <button onClick={markAllAsRead} className="text-sm text-blue-600">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-base font-bold text-gray-800 text-center">
+              اعلانات
+            </h1>
+            {unreadCount > 0 && (
+              <p className="text-[10px] text-gray-500 text-center">
+                {unreadCount} خوانده نشده
+              </p>
+            )}
+          </div>
+          {unreadCount > 0 ? (
+            <button
+              onClick={markAllAsRead}
+              disabled={markingAll}
+              className="text-xs text-blue-600 font-medium px-2.5 py-1.5 rounded-lg hover:bg-blue-50 active:scale-95 transition-all disabled:opacity-50 flex items-center gap-1"
+            >
+              {markingAll ? (
+                <div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+              )}
               خواندن همه
             </button>
+          ) : (
+            <div className="w-10" />
           )}
         </div>
 
         {/* فیلتر */}
-        <div className="flex gap-2 mt-3">
-          <button
-            onClick={() => setFilter('all')}
-            className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${
-              filter === 'all'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700'
-            }`}
-          >
-            همه
-          </button>
-          <button
-            onClick={() => setFilter('unread')}
-            className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${
-              filter === 'unread'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700'
-            }`}
-          >
-            خوانده نشده
-            {unreadCount > 0 && (
-              <span className="mr-1 text-xs">({unreadCount})</span>
-            )}
-          </button>
+        <div className="px-3 pb-3">
+          <div className="bg-gray-100 rounded-xl p-1 flex">
+            <button
+              onClick={() => setFilter('all')}
+              className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-1.5 ${
+                filter === 'all'
+                  ? 'bg-white text-gray-800 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              همه
+              <span
+                className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                  filter === 'all'
+                    ? 'bg-gray-100 text-gray-600'
+                    : 'bg-gray-200 text-gray-500'
+                }`}
+              >
+                {notifications.length}
+              </span>
+            </button>
+            <button
+              onClick={() => setFilter('unread')}
+              className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-1.5 ${
+                filter === 'unread'
+                  ? 'bg-white text-gray-800 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              خوانده نشده
+              {unreadCount > 0 && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-500 text-white font-bold">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* لیست اعلانات */}
+      {/* لیست */}
       <div className="p-4">
         {loading ? (
-          <div className="text-center py-10">
-            <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
-          </div>
-        ) : filteredNotifications.length > 0 ? (
           <div className="space-y-3">
-            {filteredNotifications.map(notif => (
+            {[1, 2, 3, 4].map((i) => (
               <div
-                key={notif.id}
-                onClick={() => handleNotificationClick(notif)}
-                className={`${getBgColor(notif.type)} rounded-lg p-4 shadow-sm cursor-pointer transition ${
-                  !notif.is_read ? 'border-r-4 border-blue-600' : ''
-                }`}
+                key={i}
+                className="bg-white rounded-2xl p-4 shadow-sm animate-pulse"
               >
-                <div className="flex items-start gap-3">
-                  <div className="text-3xl">{getIcon(notif.type)}</div>
+                <div className="flex gap-3">
+                  <div className="w-11 h-11 bg-gray-200 rounded-xl shrink-0" />
                   <div className="flex-1">
-                    <div className="flex justify-between items-start">
-                      <h3 className="font-semibold text-gray-800">{notif.title}</h3>
-                      <span className="text-xs text-gray-500">{formatDate(notif.created_at)}</span>
-                    </div>
-                    <p className="text-sm text-gray-600 mt-1">{notif.message}</p>
+                    <div className="h-4 bg-gray-200 rounded w-2/3 mb-2" />
+                    <div className="h-3 bg-gray-100 rounded w-full mb-1" />
+                    <div className="h-3 bg-gray-100 rounded w-3/4" />
                   </div>
-                  {!notif.is_read && (
-                    <div className="w-2 h-2 bg-blue-600 rounded-full mt-2"></div>
-                  )}
                 </div>
               </div>
             ))}
           </div>
+        ) : filteredNotifications.length > 0 ? (
+          <div className="space-y-2.5">
+            {filteredNotifications.map((notif) => {
+              const config = TYPE_CONFIG[notif.type] || TYPE_CONFIG.system;
+              return (
+                <div
+                  key={notif.id}
+                  onClick={() => handleNotificationClick(notif)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      handleNotificationClick(notif);
+                    }
+                  }}
+                  className={`group relative bg-white rounded-2xl p-4 shadow-sm border cursor-pointer transition-all active:scale-[0.99] ${
+                    !notif.is_read
+                      ? 'border-blue-200 shadow-blue-100/50'
+                      : 'border-gray-100 hover:border-gray-200'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    {/* آیکون */}
+                    <div
+                      className={`w-11 h-11 rounded-xl ${config.iconBg} flex items-center justify-center text-xl shrink-0 group-hover:scale-105 transition-transform`}
+                    >
+                      {config.icon}
+                    </div>
+
+                    {/* محتوا */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2 mb-0.5">
+                        <h3
+                          className={`font-semibold text-sm leading-relaxed ${
+                            !notif.is_read
+                              ? 'text-gray-900'
+                              : 'text-gray-700'
+                          }`}
+                        >
+                          {notif.title}
+                        </h3>
+                        <span className="text-[10px] text-gray-400 whitespace-nowrap shrink-0">
+                          {formatDate(notif.created_at)}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-600 leading-relaxed line-clamp-2">
+                        {notif.message}
+                      </p>
+
+                      {/* برچسب نوع + وضعیت */}
+                      <div className="flex items-center gap-2 mt-2">
+                        <span
+                          className={`text-[10px] px-2 py-0.5 rounded-md font-medium ${config.iconBg}`}
+                        >
+                          {config.label}
+                        </span>
+                        {!notif.is_read && (
+                          <span className="text-[10px] text-blue-600 font-medium flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 bg-blue-600 rounded-full animate-pulse" />
+                            جدید
+                          </span>
+                        )}
+                        {notif.link && (
+                          <span className="text-[10px] text-gray-400 mr-auto flex items-center gap-0.5 group-hover:text-blue-600 transition-colors">
+                            مشاهده
+                            <svg
+                              className="w-3 h-3 group-hover:-translate-x-0.5 transition-transform"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2.5}
+                                d="M15 19l-7-7 7-7"
+                              />
+                            </svg>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* نقطه خوانده نشده */}
+                    {!notif.is_read && (
+                      <div className="w-2 h-2 bg-blue-600 rounded-full shrink-0 mt-1.5" />
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         ) : (
-          <div className="text-center text-gray-500 py-20">
-            <div className="text-6xl mb-4">🔔</div>
-            <p className="text-lg font-semibold mb-2">هیچ اعلانی ندارید</p>
-            <p className="text-sm">وقتی اعلان جدیدی دریافت کنید اینجا نمایش داده می‌شود</p>
+          <div className="flex flex-col items-center justify-center py-20 px-6 text-center min-h-[60vh]">
+            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center text-5xl mb-5">
+              {filter === 'unread' ? '✅' : '🔔'}
+            </div>
+            <p className="text-lg font-bold text-gray-800 mb-2">
+              {filter === 'unread'
+                ? 'همه اعلانات خوانده شده'
+                : 'هیچ اعلانی ندارید'}
+            </p>
+            <p className="text-sm text-gray-500 mb-8 leading-relaxed max-w-xs">
+              {filter === 'unread'
+                ? 'اعلان خوانده نشده‌ای برای نمایش وجود ندارد'
+                : 'وقتی اعلان جدیدی دریافت کنید، اینجا نمایش داده می‌شود'}
+            </p>
+            {filter === 'unread' && (
+              <button
+                onClick={() => setFilter('all')}
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-2.5 rounded-xl font-semibold text-sm shadow-lg shadow-blue-500/30 hover:shadow-xl active:scale-[0.98] transition-all"
+              >
+                مشاهده همه اعلانات
+              </button>
+            )}
           </div>
         )}
       </div>

@@ -184,3 +184,14 @@ export const notificationsAPI = {
       body: JSON.stringify({ notification_id, mark_all: markAll }),
     }).then(handleResponse),
 };
+
+
+// -------------------------------------------------
+// API کاربران (عمومی)
+// -------------------------------------------------
+export const usersAPI = {
+  getPublicProfile: (userId: number) =>
+    fetch(`${API_BASE}/users/${userId}`, {
+      headers: getHeaders(),
+    }).then(handleResponse),
+};
