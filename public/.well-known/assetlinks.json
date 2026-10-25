@@ -1,8 +1,12 @@
-[{
-  "relation": ["delegate_permission/common.handle_all_urls"],
-  "target": {
-    "namespace": "android_app",
-    "package_name": "com.freelancerkar.unicodewebdesign",
-    "sha256_cert_fingerprints": ["8c:c5:d5:30:56:4b:bd:64:a0:15:6f:b9:b9:55:52:60:5d:40:e3:e7:0d:5e:17:d4:54:c0:07:fa:21:09:46:6b"]
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.freelancerkar.unicodewebdesign",
+      "sha256_cert_fingerprints": [
+        "8C:C5:D5:30:56:4B:BD:64:A0:15:6F:B9:B9:55:52:60:5D:40:E3:E7:0D:5E:17:D4:54:C0:07:FA:21:09:46:6B"
+      ]
+    }
   }
-}]
+]
