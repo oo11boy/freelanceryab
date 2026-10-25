@@ -21,8 +21,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="fa" dir="rtl">
-      <body className="max-w-md mx-auto bg-gray-100 relative pb-20">
+    <html lang="fa" dir="rtl" suppressHydrationWarning>
+      <body
+        suppressHydrationWarning
+        className="max-w-md mx-auto bg-gray-100 relative pb-20"
+      >
         <AuthProvider>
           <div className="min-h-screen">{children}</div>
           <BottomNav />
