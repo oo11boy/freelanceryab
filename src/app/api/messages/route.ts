@@ -1,61 +1,72 @@
 // app/api/messages/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/db';
-import { getUserIdFromToken, unauthorized } from '@/lib/auth';
+import { NextRequest, NextResponse } from "next/server";
+import { query } from "@/lib/db";
+import { getUserIdFromToken, unauthorized } from "@/lib/auth";
 
 // -------------------------------------------------
-// GET - دریافت لیست مکالمات
+// GET - لیست مکالمات (گروه‌بندی بر اساس post_id + other_user)
 // -------------------------------------------------
 export async function GET(request: NextRequest) {
   try {
     const userId = getUserIdFromToken(request);
     if (!userId) return unauthorized();
 
-    // 🔑 کوئری اصلاح‌شده با subqueryهای امن
     const conversations = await query(
       `SELECT
-        other_user.id           AS user_id,
-        other_user.full_name    AS user_name,
-        other_user.avatar       AS user_avatar,
-        other_user.online_status,
-        last_msg.message        AS last_message,
-        last_msg.created_at     AS last_message_time,
-        COALESCE(unread.cnt, 0) AS unread_count
-      FROM (
-        SELECT
-          CASE WHEN sender_id = ? THEN receiver_id ELSE sender_id END AS other_user_id,
-          MAX(id) AS last_message_id
-        FROM messages
-        WHERE sender_id = ? OR receiver_id = ?
-        GROUP BY other_user_id
-      ) AS conv
-      JOIN users AS other_user
-        ON other_user.id = conv.other_user_id
-      JOIN messages AS last_msg
-        ON last_msg.id = conv.last_message_id
-      LEFT JOIN (
-        SELECT sender_id, COUNT(*) AS cnt
-        FROM messages
-        WHERE receiver_id = ? AND is_read = FALSE
-        GROUP BY sender_id
-      ) AS unread
-        ON unread.sender_id = other_user.id
-      ORDER BY last_msg.created_at DESC`,
+         conv.post_id,
+         p.title AS post_title,
+         other_user.id AS user_id,
+         other_user.full_name AS user_name,
+         other_user.avatar AS user_avatar,
+         other_user.online_status,
+         last_msg.message AS last_message,
+         last_msg.created_at AS last_message_time,
+         COALESCE(unread.cnt, 0) AS unread_count
+       FROM (
+         SELECT
+           m.post_id,
+           CASE WHEN m.sender_id = ? THEN m.receiver_id ELSE m.sender_id END AS other_user_id,
+           MAX(m.id) AS last_message_id
+         FROM messages m
+         WHERE m.sender_id = ? OR m.receiver_id = ?
+         GROUP BY m.post_id, other_user_id
+       ) AS conv
+       JOIN users AS other_user
+         ON other_user.id = conv.other_user_id
+       JOIN messages AS last_msg
+         ON last_msg.id = conv.last_message_id
+       LEFT JOIN (
+         SELECT
+           m2.post_id,
+           m2.sender_id,
+           COUNT(*) AS cnt
+         FROM messages m2
+         WHERE m2.receiver_id = ? AND m2.is_read = FALSE
+         GROUP BY m2.post_id, m2.sender_id
+       ) AS unread
+         ON unread.sender_id = other_user.id
+         AND (
+           (unread.post_id IS NULL AND conv.post_id IS NULL)
+           OR unread.post_id = conv.post_id
+         )
+       LEFT JOIN posts p
+         ON p.id = conv.post_id
+       ORDER BY last_msg.created_at DESC`,
       [userId, userId, userId, userId]
     );
 
     return NextResponse.json({ conversations });
   } catch (error) {
-    console.error('Get conversations error:', error);
+    console.error("Get conversations error:", error);
     return NextResponse.json(
-      { error: 'خطا در دریافت مکالمات' },
+      { error: "خطا در دریافت مکالمات" },
       { status: 500 }
     );
   }
 }
 
 // -------------------------------------------------
-// POST - ارسال پیام جدید (fallback REST)
+// POST - ارسال پیام
 // -------------------------------------------------
 export async function POST(request: NextRequest) {
   try {
@@ -65,10 +76,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { receiver_id, post_id, message } = body;
 
-    // اعتبارسنجی
     if (!receiver_id || !message || !String(message).trim()) {
       return NextResponse.json(
-        { error: 'گیرنده و متن پیام الزامی است' },
+        { error: "گیرنده و متن پیام الزامی است" },
         { status: 400 }
       );
     }
@@ -76,31 +86,29 @@ export async function POST(request: NextRequest) {
     const receiverId = parseInt(String(receiver_id), 10);
     if (isNaN(receiverId)) {
       return NextResponse.json(
-        { error: 'شناسه گیرنده نامعتبر است' },
+        { error: "شناسه گیرنده نامعتبر است" },
         { status: 400 }
       );
     }
 
     if (receiverId === senderId) {
       return NextResponse.json(
-        { error: 'نمی‌توانید به خودتان پیام بفرستید' },
+        { error: "نمی‌توانید به خودتان پیام بفرستید" },
         { status: 400 }
       );
     }
 
-    // بررسی وجود گیرنده
     const receiverExists = await query(
-      'SELECT id FROM users WHERE id = ? AND is_active = 1',
+      "SELECT id FROM users WHERE id = ? AND is_active = 1",
       [receiverId]
     );
     if (!(receiverExists as any[]).length) {
       return NextResponse.json(
-        { error: 'کاربر گیرنده یافت نشد' },
+        { error: "کاربر گیرنده یافت نشد" },
         { status: 404 }
       );
     }
 
-    // درج پیام
     const result = await query(
       `INSERT INTO messages (sender_id, receiver_id, post_id, message)
        VALUES (?, ?, ?, ?)`,
@@ -109,16 +117,19 @@ export async function POST(request: NextRequest) {
 
     const messageId = (result as any).insertId;
 
-    // اعلان برای گیرنده (لینک به مکالمه، نه /messages)
+    // اعلان — لینک به مکالمه با post_id
+    let link = `/messages?user=${senderId}`;
+    if (post_id) link += `&post=${post_id}`;
+
     await query(
       `INSERT INTO notifications (user_id, type, title, message, link)
        VALUES (?, ?, ?, ?, ?)`,
       [
         receiverId,
-        'message',
-        'پیام جدید',
-        'شما یک پیام جدید دارید',
-        `/messages?user=${senderId}`,
+        "message",
+        "پیام جدید",
+        "شما یک پیام جدید دارید",
+        link,
       ]
     );
 
@@ -130,15 +141,13 @@ export async function POST(request: NextRequest) {
         text: String(message).trim(),
         sender_id: senderId,
         receiver_id: receiverId,
+        post_id: post_id || null,
         is_read: false,
         created_at: new Date().toISOString(),
       },
     });
   } catch (error) {
-    console.error('Send message error:', error);
-    return NextResponse.json(
-      { error: 'خطا در ارسال پیام' },
-      { status: 500 }
-    );
+    console.error("Send message error:", error);
+    return NextResponse.json({ error: "خطا در ارسال پیام" }, { status: 500 });
   }
 }

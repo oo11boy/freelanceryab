@@ -1,9 +1,7 @@
 // app/services/api.ts
 
-// سرویس اصلی برای ارتباط با API
 const API_BASE = '/api';
 
-// تابع برای دریافت هدرهای احراز هویت
 const getHeaders = () => {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   return {
@@ -12,11 +10,9 @@ const getHeaders = () => {
   };
 };
 
-// تابع برای پردازش خطاها
 const handleResponse = async (response: Response) => {
   const data = await response.json();
   if (!response.ok) {
-    // اگر توکن منقضی شده باشد
     if (response.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
@@ -45,7 +41,6 @@ export const authAPI = {
       body: JSON.stringify({ phone, code }),
     }).then(handleResponse),
 
-  // ✅ جدید: تکمیل پروفایل بعد از تأیید OTP
   completeProfile: (first_name: string, last_name: string) =>
     fetch(`${API_BASE}/auth/complete-profile`, {
       method: 'POST',
@@ -85,13 +80,14 @@ export const postsAPI = {
     search?: string;
     sort?: string;
     page?: number;
-    limit?: number; 
+    limit?: number;
   }) => {
     const query = new URLSearchParams();
     if (params?.category) query.append('category', params.category);
     if (params?.search) query.append('search', params.search);
     if (params?.sort) query.append('sort', params.sort);
     if (params?.page) query.append('page', params.page.toString());
+    if (params?.limit) query.append('limit', params.limit.toString());
     return fetch(`${API_BASE}/posts?${query.toString()}`, {
       headers: getHeaders(),
     }).then(handleResponse);
@@ -155,10 +151,16 @@ export const messagesAPI = {
       headers: getHeaders(),
     }).then(handleResponse),
 
-  getMessages: (userId: number) =>
-    fetch(`${API_BASE}/messages/${userId}`, {
+  // 🔑 postId اختیاری — اگه null/undefined باشه، پیام‌های بدون post_id برمی‌گرده
+  getMessages: (userId: number, postId?: number | null) => {
+    let url = `${API_BASE}/messages/${userId}`;
+    if (postId !== undefined && postId !== null) {
+      url += `?postId=${postId}`;
+    }
+    return fetch(url, {
       headers: getHeaders(),
-    }).then(handleResponse),
+    }).then(handleResponse);
+  },
 
   sendMessage: (receiver_id: number, message: string, post_id?: number) =>
     fetch(`${API_BASE}/messages`, {
@@ -185,13 +187,75 @@ export const notificationsAPI = {
     }).then(handleResponse),
 };
 
-
-// -------------------------------------------------
-// API کاربران (عمومی)
-// -------------------------------------------------
 export const usersAPI = {
   getPublicProfile: (userId: number) =>
     fetch(`${API_BASE}/users/${userId}`, {
       headers: getHeaders(),
     }).then(handleResponse),
+
+  getTop: (params?: {
+    limit?: number;
+    minRating?: number;
+    minProjects?: number;
+    sort?: "rating" | "projects";
+  }) => {
+    const query = new URLSearchParams();
+    if (params?.limit) query.append("limit", String(params.limit));
+    if (params?.minRating !== undefined)
+      query.append("minRating", String(params.minRating));
+    if (params?.minProjects !== undefined)
+      query.append("minProjects", String(params.minProjects));
+    if (params?.sort) query.append("sort", params.sort);
+    return fetch(`${API_BASE}/users/top?${query.toString()}`, {
+      headers: getHeaders(),
+    }).then(handleResponse);
+  },
 };
+
+// -------------------------------------------------
+// API قراردادها
+// -------------------------------------------------
+export const contractsAPI = {
+  get: (postId: number, otherUserId: number) =>
+    fetch(`${API_BASE}/contracts?postId=${postId}&otherUserId=${otherUserId}`, {
+      headers: getHeaders(),
+    }).then(handleResponse),
+
+  start: (postId: number, freelancerId: number) =>
+    fetch(`${API_BASE}/contracts`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ postId, freelancerId }),
+    }).then(handleResponse),
+
+  update: (contractId: number, action: 'deliver' | 'confirm' | 'cancel') =>
+    fetch(`${API_BASE}/contracts/${contractId}`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify({ action }),
+    }).then(handleResponse),
+};
+
+// -------------------------------------------------
+// API امتیازها
+// -------------------------------------------------
+export const reviewsAPI = {
+  submit: (contractId: number, rating: number, comment?: string) =>
+    fetch(`${API_BASE}/reviews`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ contractId, rating, comment }),
+    }).then(handleResponse),
+};
+
+// -------------------------------------------------
+// API نظرات پروفایل
+// -------------------------------------------------
+export const profileReviewsAPI = {
+  get: () =>
+    fetch(`${API_BASE}/profile/reviews`, {
+      headers: getHeaders(),
+    }).then(handleResponse),
+};
+
+

@@ -1,11 +1,13 @@
 // app/messages/page.tsx
-'use client';
-import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/app/hooks/useAuth';
-import { useUILayout } from '@/app/hooks/useUILayout';
-import { messagesAPI } from '@/app/services/api';
-import { initializeSocket, getSocket } from '@/app/services/socket';
+"use client";
+import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/app/hooks/useAuth";
+import { useUILayout } from "@/app/hooks/useUILayout";
+import { messagesAPI, contractsAPI, reviewsAPI } from "@/app/services/api";
+import { initializeSocket, getSocket } from "@/app/services/socket";
+import ContractBar from "@/app/components/ContractBar";
+import RatingModal from "@/app/components/RatingModal";
 
 interface Message {
   id: number;
@@ -13,12 +15,14 @@ interface Message {
   message: string;
   sender_id: number;
   receiver_id: number;
+  post_id?: number | null;
   is_read: boolean;
   created_at: string;
 }
 
 interface Conversation {
-  id: number;
+  post_id: number | null;
+  post_title?: string | null;
   user_id: number;
   user_name: string;
   user_avatar: string;
@@ -28,6 +32,22 @@ interface Conversation {
   online?: boolean;
 }
 
+interface ContractData {
+  contract: any;
+  myReview: any;
+  otherReview: any;
+  role: "client" | "freelancer" | null;
+  postOwnerId: number | null;
+}
+
+const EMPTY_CONTRACT: ContractData = {
+  contract: null,
+  myReview: null,
+  otherReview: null,
+  role: null,
+  postOwnerId: null,
+};
+
 export default function MessagesPage() {
   const router = useRouter();
   const { user, token, loading: authLoading } = useAuth();
@@ -36,15 +56,21 @@ export default function MessagesPage() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedChat, setSelectedChat] = useState<number | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [newMessage, setNewMessage] = useState('');
+  const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [typingUsers, setTypingUsers] = useState<Set<number>>(new Set());
 
+  const [contractData, setContractData] = useState<ContractData>(EMPTY_CONTRACT);
+  const [postIdForChat, setPostIdForChat] = useState<number | null>(null);
+  const [postTitleForChat, setPostTitleForChat] = useState<string | null>(null);
+  const [showRating, setShowRating] = useState(false);
+
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const selectedChatRef = useRef<number | null>(null);
+  const postIdRef = useRef<number | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -52,17 +78,16 @@ export default function MessagesPage() {
     selectedChatRef.current = selectedChat;
   }, [selectedChat]);
 
-  // -------------------------------------------------
-  // پنهان کردن BottomNav هنگام باز بودن چت
-  // -------------------------------------------------
+  useEffect(() => {
+    postIdRef.current = postIdForChat;
+  }, [postIdForChat]);
+
   useEffect(() => {
     setHideBottomNav(!!selectedChat);
     return () => setHideBottomNav(false);
   }, [selectedChat, setHideBottomNav]);
 
-  // -------------------------------------------------
-  // مدیریت ارتفاع چت با VisualViewport (کیبورد موبایل)
-  // -------------------------------------------------
+  // VisualViewport
   useEffect(() => {
     if (!selectedChat) return;
     const vv = window.visualViewport;
@@ -74,28 +99,25 @@ export default function MessagesPage() {
         container.style.height = `${vv.height}px`;
         container.style.top = `${vv.offsetTop}px`;
       }
-      scrollToBottom('auto');
+      scrollToBottom("auto");
     };
 
-    vv.addEventListener('resize', onResize);
-    vv.addEventListener('scroll', onResize);
+    vv.addEventListener("resize", onResize);
+    vv.addEventListener("scroll", onResize);
     onResize();
 
     return () => {
-      vv.removeEventListener('resize', onResize);
-      vv.removeEventListener('scroll', onResize);
+      vv.removeEventListener("resize", onResize);
+      vv.removeEventListener("scroll", onResize);
       const container = chatContainerRef.current;
       if (container) {
-        container.style.height = '';
-        container.style.top = '';
+        container.style.height = "";
+        container.style.top = "";
       }
     };
   }, [selectedChat]);
 
-  // -------------------------------------------------
-  // اسکرول به پایین
-  // -------------------------------------------------
-  const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
+  const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
     const container = messagesContainerRef.current;
     if (container) {
       container.scrollTo({
@@ -105,13 +127,11 @@ export default function MessagesPage() {
     }
   };
 
-  // -------------------------------------------------
-  // راه‌اندازی Socket
-  // -------------------------------------------------
+  // Socket
   useEffect(() => {
     if (authLoading) return;
     if (!token) {
-      router.push('/login');
+      router.push("/login");
       return;
     }
 
@@ -122,11 +142,15 @@ export default function MessagesPage() {
 
     const onNewMessage = (data: Message) => {
       const currentChat = selectedChatRef.current;
+      const currentPostId = postIdRef.current;
       const myId = user?.id;
 
+      const samePostId = (data.post_id ?? null) === (currentPostId ?? null);
+
       const isCurrentChat =
-        (data.sender_id === myId && data.receiver_id === currentChat) ||
-        (data.sender_id === currentChat && data.receiver_id === myId);
+        samePostId &&
+        ((data.sender_id === myId && data.receiver_id === currentChat) ||
+          (data.sender_id === currentChat && data.receiver_id === myId));
 
       if (isCurrentChat) {
         setMessages((prev) => {
@@ -135,7 +159,7 @@ export default function MessagesPage() {
         });
 
         if (data.receiver_id === myId) {
-          socket.emit('mark_read', {
+          socket.emit("mark_read", {
             message_id: data.id,
             sender_id: data.sender_id,
           });
@@ -147,7 +171,10 @@ export default function MessagesPage() {
 
     const onMessageSent = (data: Message) => {
       const currentChat = selectedChatRef.current;
-      if (data.receiver_id === currentChat) {
+      const currentPostId = postIdRef.current;
+      const samePostId = (data.post_id ?? null) === (currentPostId ?? null);
+
+      if (samePostId && data.receiver_id === currentChat) {
         setMessages((prev) => {
           if (prev.some((m) => m.id === data.id)) return prev;
           return [...prev, data];
@@ -215,104 +242,121 @@ export default function MessagesPage() {
     };
 
     const onMessageError = (data: { error: string }) => {
-      console.error('Message error:', data.error);
+      console.error("Message error:", data.error);
       alert(data.error);
     };
 
-    socket.on('connect', onConnect);
-    socket.on('disconnect', onDisconnect);
-    socket.on('new_message', onNewMessage);
-    socket.on('message_sent', onMessageSent);
-    socket.on('message_read', onMessageRead);
-    socket.on('conversation_read', onConversationRead);
-    socket.on('online_users', onOnlineUsers);
-    socket.on('user_online', onUserOnline);
-    socket.on('user_offline', onUserOffline);
-    socket.on('user_typing', onUserTyping);
-    socket.on('message_error', onMessageError);
+    socket.on("connect", onConnect);
+    socket.on("disconnect", onDisconnect);
+    socket.on("new_message", onNewMessage);
+    socket.on("message_sent", onMessageSent);
+    socket.on("message_read", onMessageRead);
+    socket.on("conversation_read", onConversationRead);
+    socket.on("online_users", onOnlineUsers);
+    socket.on("user_online", onUserOnline);
+    socket.on("user_offline", onUserOffline);
+    socket.on("user_typing", onUserTyping);
+    socket.on("message_error", onMessageError);
 
     if (socket.connected) setIsConnected(true);
 
     loadConversations();
 
     return () => {
-      socket.off('connect', onConnect);
-      socket.off('disconnect', onDisconnect);
-      socket.off('new_message', onNewMessage);
-      socket.off('message_sent', onMessageSent);
-      socket.off('message_read', onMessageRead);
-      socket.off('conversation_read', onConversationRead);
-      socket.off('online_users', onOnlineUsers);
-      socket.off('user_online', onUserOnline);
-      socket.off('user_offline', onUserOffline);
-      socket.off('user_typing', onUserTyping);
-      socket.off('message_error', onMessageError);
+      socket.off("connect", onConnect);
+      socket.off("disconnect", onDisconnect);
+      socket.off("new_message", onNewMessage);
+      socket.off("message_sent", onMessageSent);
+      socket.off("message_read", onMessageRead);
+      socket.off("conversation_read", onConversationRead);
+      socket.off("online_users", onOnlineUsers);
+      socket.off("user_online", onUserOnline);
+      socket.off("user_offline", onUserOffline);
+      socket.off("user_typing", onUserTyping);
+      socket.off("message_error", onMessageError);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, authLoading, user?.id]);
 
-  // -------------------------------------------------
-  // اسکرول خودکار وقتی پیام‌ها تغییر کردن
-  // -------------------------------------------------
+  // اسکرول خودکار
   useEffect(() => {
     if (messages.length > 0) {
-      const t = setTimeout(() => scrollToBottom('smooth'), 100);
+      const t = setTimeout(() => scrollToBottom("smooth"), 100);
       return () => clearTimeout(t);
     }
   }, [messages]);
 
-  // -------------------------------------------------
-  // فوکوس + اسکرول فوری وقتی چت باز شد
-  // -------------------------------------------------
   useEffect(() => {
     if (selectedChat) {
-      const t = setTimeout(() => {
-        scrollToBottom('auto');
-      }, 400);
+      const t = setTimeout(() => scrollToBottom("auto"), 400);
       return () => clearTimeout(t);
     }
   }, [selectedChat]);
 
-  // -------------------------------------------------
-  // بارگذاری مکالمات
-  // -------------------------------------------------
+  // بارگذاری‌ها
   const loadConversations = async () => {
     try {
       const data = await messagesAPI.getConversations();
       setConversations(data.conversations || []);
     } catch (error) {
-      console.error('خطا در بارگذاری مکالمات:', error);
+      console.error("خطا در بارگذاری مکالمات:", error);
     }
   };
 
-  // -------------------------------------------------
-  // بارگذاری پیام‌ها
-  // -------------------------------------------------
-  const loadMessages = async (userId: number) => {
+  const loadMessages = async (userId: number, postId: number | null) => {
     setLoading(true);
     try {
-      const data = await messagesAPI.getMessages(userId);
+      const data = await messagesAPI.getMessages(userId, postId);
       setMessages(data.messages || []);
 
       const socket = getSocket();
       if (socket) {
-        socket.emit('mark_conversation_read', { sender_id: userId });
+        socket.emit("mark_conversation_read", { sender_id: userId });
       }
     } catch (error) {
-      console.error('خطا در بارگذاری پیام‌ها:', error);
+      console.error("خطا در بارگذاری پیام‌ها:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSelectChat = async (userId: number) => {
-    setSelectedChat(userId);
-    await loadMessages(userId);
+  const loadContract = async () => {
+    if (!selectedChat || !postIdForChat) {
+      setContractData(EMPTY_CONTRACT);
+      return;
+    }
+    try {
+      const data = await contractsAPI.get(postIdForChat, selectedChat);
+      setContractData({
+        contract: data.contract,
+        myReview: data.myReview,
+        otherReview: data.otherReview,
+        role: data.role,
+        postOwnerId: data.postOwnerId,
+      });
+    } catch (error) {
+      console.error("خطا در بارگذاری قرارداد:", error);
+    }
   };
 
-  // -------------------------------------------------
+  useEffect(() => {
+    if (selectedChat && postIdForChat) {
+      loadContract();
+    } else {
+      setContractData(EMPTY_CONTRACT);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedChat, postIdForChat]);
+
+  const handleSelectConversation = async (conv: Conversation) => {
+    setSelectedChat(conv.user_id);
+    setPostIdForChat(conv.post_id);
+    setPostTitleForChat(conv.post_title || null);
+    setContractData(EMPTY_CONTRACT);
+    await loadMessages(conv.user_id, conv.post_id);
+  };
+
   // ارسال پیام
-  // -------------------------------------------------
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !selectedChat || sending) return;
 
@@ -320,51 +364,57 @@ export default function MessagesPage() {
     try {
       const socket = getSocket();
       if (socket?.connected) {
-        socket.emit('send_message', {
+        socket.emit("send_message", {
           receiver_id: selectedChat,
           message: newMessage.trim(),
+          post_id: postIdForChat || undefined,
         });
-        setNewMessage('');
+        setNewMessage("");
       } else {
-        await messagesAPI.sendMessage(selectedChat, newMessage.trim());
-        setNewMessage('');
-        await loadMessages(selectedChat);
+        await messagesAPI.sendMessage(
+          selectedChat,
+          newMessage.trim(),
+          postIdForChat || undefined
+        );
+        setNewMessage("");
+        await loadMessages(selectedChat, postIdForChat);
       }
 
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
       }
-      socket?.emit('typing', { receiver_id: selectedChat, is_typing: false });
+      socket?.emit("typing", { receiver_id: selectedChat, is_typing: false });
       inputRef.current?.focus();
     } catch (error) {
-      console.error('خطا:', error);
-      alert('خطا در ارسال پیام');
+      console.error("خطا:", error);
+      alert("خطا در ارسال پیام");
     } finally {
       setSending(false);
     }
   };
 
-  // -------------------------------------------------
-  // تایپ کردن
-  // -------------------------------------------------
   const handleTyping = (value: string) => {
     setNewMessage(value);
     const socket = getSocket();
     if (!socket || !selectedChat) return;
 
-    socket.emit('typing', { receiver_id: selectedChat, is_typing: true });
+    socket.emit("typing", { receiver_id: selectedChat, is_typing: true });
 
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
     }
     typingTimeoutRef.current = setTimeout(() => {
-      socket.emit('typing', { receiver_id: selectedChat, is_typing: false });
+      socket.emit("typing", { receiver_id: selectedChat, is_typing: false });
     }, 1500);
   };
 
-  // -------------------------------------------------
+  const handleSubmitRating = async (rating: number, comment?: string) => {
+    if (!contractData.contract) return;
+    await reviewsAPI.submit(contractData.contract.id, rating, comment);
+    await loadContract();
+  };
+
   // فرمت زمان
-  // -------------------------------------------------
   const formatTime = (date: string) => {
     try {
       const d = new Date(date);
@@ -375,18 +425,18 @@ export default function MessagesPage() {
       const isYesterday = d.toDateString() === yesterday.toDateString();
 
       if (isToday) {
-        return d.toLocaleTimeString('fa-IR', {
-          hour: '2-digit',
-          minute: '2-digit',
+        return d.toLocaleTimeString("fa-IR", {
+          hour: "2-digit",
+          minute: "2-digit",
         });
       }
-      if (isYesterday) return 'دیروز';
-      return d.toLocaleDateString('fa-IR', {
-        month: 'short',
-        day: 'numeric',
+      if (isYesterday) return "دیروز";
+      return d.toLocaleDateString("fa-IR", {
+        month: "short",
+        day: "numeric",
       });
     } catch {
-      return '';
+      return "";
     }
   };
 
@@ -394,17 +444,17 @@ export default function MessagesPage() {
     try {
       const d = new Date(date);
       const now = new Date();
-      if (d.toDateString() === now.toDateString()) return 'امروز';
+      if (d.toDateString() === now.toDateString()) return "امروز";
       const yesterday = new Date(now);
       yesterday.setDate(now.getDate() - 1);
-      if (d.toDateString() === yesterday.toDateString()) return 'دیروز';
-      return d.toLocaleDateString('fa-IR', {
-        weekday: 'long',
-        month: 'long',
-        day: 'numeric',
+      if (d.toDateString() === yesterday.toDateString()) return "دیروز";
+      return d.toLocaleDateString("fa-IR", {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
       });
     } catch {
-      return '';
+      return "";
     }
   };
 
@@ -419,20 +469,23 @@ export default function MessagesPage() {
     );
   }
 
-  const currentChat = conversations.find((c) => c.user_id === selectedChat);
+  const currentChat = conversations.find(
+    (c) =>
+      c.user_id === selectedChat &&
+      (c.post_id ?? null) === (postIdForChat ?? null)
+  );
   const isTyping = selectedChat ? typingUsers.has(selectedChat) : false;
   const totalUnread = conversations.reduce((s, c) => s + c.unread_count, 0);
 
   return (
     <div className="min-h-screen bg-gray-50">
       {selectedChat && currentChat ? (
-        // ---------- صفحه چت (fixed + visualViewport) ----------
         <div
           ref={chatContainerRef}
           className="fixed inset-x-0 top-0 flex flex-col bg-gradient-to-b from-blue-50 via-gray-50 to-gray-50 z-30"
           style={{
-            height: '100dvh',
-            paddingBottom: 'env(safe-area-inset-bottom)',
+            height: "100dvh",
+            paddingBottom: "env(safe-area-inset-bottom)",
           }}
         >
           {/* هدر چت */}
@@ -458,7 +511,7 @@ export default function MessagesPage() {
             </button>
             <div className="relative">
               <div className="w-11 h-11 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-lg text-white font-bold shadow-md">
-                {currentChat.user_name?.charAt(0) || '👤'}
+                {currentChat.user_name?.charAt(0) || "👤"}
               </div>
               {currentChat.online && (
                 <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-white shadow" />
@@ -475,15 +528,15 @@ export default function MessagesPage() {
                     <span className="flex gap-0.5">
                       <span
                         className="w-1 h-1 bg-blue-600 rounded-full animate-bounce"
-                        style={{ animationDelay: '0ms' }}
+                        style={{ animationDelay: "0ms" }}
                       />
                       <span
                         className="w-1 h-1 bg-blue-600 rounded-full animate-bounce"
-                        style={{ animationDelay: '150ms' }}
+                        style={{ animationDelay: "150ms" }}
                       />
                       <span
                         className="w-1 h-1 bg-blue-600 rounded-full animate-bounce"
-                        style={{ animationDelay: '300ms' }}
+                        style={{ animationDelay: "300ms" }}
                       />
                     </span>
                   </span>
@@ -495,7 +548,6 @@ export default function MessagesPage() {
               </div>
             </div>
 
-            {/* دکمه مشاهده پروفایل */}
             <button
               onClick={() => router.push(`/user/${currentChat.user_id}`)}
               className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-100 active:scale-95 transition-all shrink-0"
@@ -516,6 +568,38 @@ export default function MessagesPage() {
               </svg>
             </button>
           </div>
+
+          {/* نوار عنوان پروژه */}
+          {postTitleForChat && (
+            <div className="bg-blue-600/95 backdrop-blur-md border-b border-blue-700 px-3 py-2 shrink-0">
+              <div className="flex items-center gap-2">
+                <span className="text-sm shrink-0">📋</span>
+                <p className="text-xs text-white font-semibold truncate flex-1">
+                  {postTitleForChat}
+                </p>
+                <button
+                  onClick={() => router.push(`/post/${postIdForChat}`)}
+                  className="text-[10px] bg-white/20 text-white px-2 py-1 rounded-md hover:bg-white/30 active:scale-95 transition-all shrink-0 font-medium"
+                >
+                  مشاهده
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* نوار قرارداد */}
+          {postIdForChat && (
+            <ContractBar
+              contract={contractData.contract}
+              role={contractData.role}
+              postId={postIdForChat}
+              otherUserId={selectedChat}
+              onRefresh={loadContract}
+              onRate={() => setShowRating(true)}
+              hasRated={!!contractData.myReview}
+              otherReview={contractData.otherReview}
+            />
+          )}
 
           {/* پیام‌ها */}
           <div
@@ -555,14 +639,14 @@ export default function MessagesPage() {
                       )}
                       <div
                         className={`flex items-end gap-1.5 ${
-                          isMe ? 'justify-end' : 'justify-start'
+                          isMe ? "justify-end" : "justify-start"
                         }`}
                       >
                         {!isMe && (
                           <div className="w-7 shrink-0">
                             {showAvatar ? (
                               <div className="w-7 h-7 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-xs text-white font-bold">
-                                {currentChat.user_name?.charAt(0) || '👤'}
+                                {currentChat.user_name?.charAt(0) || "👤"}
                               </div>
                             ) : (
                               <div className="w-7 h-7" />
@@ -572,8 +656,8 @@ export default function MessagesPage() {
                         <div
                           className={`max-w-[78%] rounded-2xl px-3.5 py-2.5 shadow-sm ${
                             isMe
-                              ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-br-sm'
-                              : 'bg-white text-gray-800 rounded-bl-sm border border-gray-100'
+                              ? "bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-br-sm"
+                              : "bg-white text-gray-800 rounded-bl-sm border border-gray-100"
                           }`}
                         >
                           <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
@@ -581,7 +665,7 @@ export default function MessagesPage() {
                           </p>
                           <div
                             className={`flex items-center justify-end gap-1 mt-1 text-[10px] ${
-                              isMe ? 'text-blue-100' : 'text-gray-400'
+                              isMe ? "text-blue-100" : "text-gray-400"
                             }`}
                           >
                             <span>{formatTime(msg.created_at)}</span>
@@ -589,11 +673,11 @@ export default function MessagesPage() {
                               <span
                                 className={
                                   msg.is_read
-                                    ? 'text-blue-100'
-                                    : 'text-blue-200/70'
+                                    ? "text-blue-100"
+                                    : "text-blue-200/70"
                                 }
                               >
-                                {msg.is_read ? '✓✓' : '✓'}
+                                {msg.is_read ? "✓✓" : "✓"}
                               </span>
                             )}
                           </div>
@@ -605,21 +689,21 @@ export default function MessagesPage() {
                 {isTyping && (
                   <div className="flex items-end gap-1.5 justify-start">
                     <div className="w-7 h-7 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-xs text-white font-bold">
-                      {currentChat.user_name?.charAt(0) || '👤'}
+                      {currentChat.user_name?.charAt(0) || "👤"}
                     </div>
                     <div className="bg-white border border-gray-100 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm">
                       <div className="flex gap-1">
                         <span
                           className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-                          style={{ animationDelay: '0ms' }}
+                          style={{ animationDelay: "0ms" }}
                         />
                         <span
                           className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-                          style={{ animationDelay: '150ms' }}
+                          style={{ animationDelay: "150ms" }}
                         />
                         <span
                           className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-                          style={{ animationDelay: '300ms' }}
+                          style={{ animationDelay: "300ms" }}
                         />
                       </div>
                     </div>
@@ -651,7 +735,7 @@ export default function MessagesPage() {
                   value={newMessage}
                   onChange={(e) => handleTyping(e.target.value)}
                   onKeyDown={(e) =>
-                    e.key === 'Enter' && !e.shiftKey && handleSendMessage()
+                    e.key === "Enter" && !e.shiftKey && handleSendMessage()
                   }
                   placeholder="پیام خود را بنویسید..."
                   className="w-full bg-gray-100 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
@@ -680,7 +764,6 @@ export default function MessagesPage() {
           </div>
         </div>
       ) : (
-        // ---------- لیست مکالمات ----------
         <>
           <div className="bg-white/95 backdrop-blur-md border-b border-gray-200 px-4 py-4 sticky top-0 z-10 shadow-sm">
             <div className="flex items-center justify-between">
@@ -688,18 +771,18 @@ export default function MessagesPage() {
                 <h1 className="text-xl font-bold text-gray-800">پیام‌ها</h1>
                 {totalUnread > 0 && (
                   <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-                    {totalUnread > 99 ? '99+' : totalUnread}
+                    {totalUnread > 99 ? "99+" : totalUnread}
                   </span>
                 )}
               </div>
               <div className="flex items-center gap-1.5">
                 <div
                   className={`w-2 h-2 rounded-full ${
-                    isConnected ? 'bg-green-500' : 'bg-red-500 animate-pulse'
+                    isConnected ? "bg-green-500" : "bg-red-500 animate-pulse"
                   }`}
                 />
                 <span className="text-xs text-gray-500">
-                  {isConnected ? 'آنلاین' : 'قطع'}
+                  {isConnected ? "آنلاین" : "قطع"}
                 </span>
               </div>
             </div>
@@ -708,88 +791,83 @@ export default function MessagesPage() {
           <div className="pb-24">
             {conversations.length > 0 ? (
               <div className="divide-y divide-gray-100 bg-white">
-                {conversations.map((conv) => (
-                  <div
-                    key={conv.user_id}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => handleSelectChat(conv.user_id)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        handleSelectChat(conv.user_id);
-                      }
-                    }}
-                    className="w-full text-right bg-white hover:bg-gray-50 active:bg-gray-100 px-4 py-3 flex items-center gap-3 transition-colors cursor-pointer"
-                  >
-                    <div className="relative shrink-0">
-                      <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-xl text-white font-bold shadow-md">
-                        {conv.user_name?.charAt(0) || '👤'}
-                      </div>
-                      {conv.online && (
-                        <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-white shadow" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex justify-between items-center gap-2 mb-0.5">
-                        <div className="flex items-center gap-1 min-w-0">
-                          <span
-                            className={`font-semibold truncate ${
-                              conv.unread_count > 0
-                                ? 'text-gray-900'
-                                : 'text-gray-700'
-                            }`}
-                          >
-                            {conv.user_name}
-                          </span>
-                          {/* دکمه پروفایل */}
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              router.push(`/user/${conv.user_id}`);
-                            }}
-                            className="w-6 h-6 rounded-full flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-blue-50 active:scale-90 transition-all shrink-0"
-                            aria-label={`مشاهده پروفایل ${conv.user_name}`}
-                            title="مشاهده پروفایل"
-                          >
-                            <svg
-                              className="w-4 h-4"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                              />
-                            </svg>
-                          </button>
+                {conversations.map((conv) => {
+                  const key = `${conv.user_id}-${conv.post_id ?? "general"}`;
+                  return (
+                    <div
+                      key={key}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => handleSelectConversation(conv)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          handleSelectConversation(conv);
+                        }
+                      }}
+                      className="w-full text-right bg-white hover:bg-gray-50 active:bg-gray-100 px-4 py-3 flex items-center gap-3 transition-colors cursor-pointer"
+                    >
+                      <div className="relative shrink-0">
+                        <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-xl text-white font-bold shadow-md">
+                          {conv.user_name?.charAt(0) || "👤"}
                         </div>
-                        <span className="text-xs text-gray-400 whitespace-nowrap shrink-0">
-                          {formatTime(conv.last_message_time)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center gap-2">
-                        <p
-                          className={`text-sm truncate ${
-                            conv.unread_count > 0
-                              ? 'text-gray-700 font-medium'
-                              : 'text-gray-500'
-                          }`}
-                        >
-                          {conv.last_message}
-                        </p>
-                        {conv.unread_count > 0 && (
-                          <div className="min-w-[22px] h-[22px] px-1.5 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 shadow">
-                            {conv.unread_count > 9 ? '9+' : conv.unread_count}
-                          </div>
+                        {conv.online && (
+                          <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-white shadow" />
                         )}
                       </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-center gap-2 mb-0.5">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span
+                              className={`font-semibold truncate ${
+                                conv.unread_count > 0
+                                  ? "text-gray-900"
+                                  : "text-gray-700"
+                              }`}
+                            >
+                              {conv.user_name}
+                            </span>
+                            {conv.post_id ? (
+                              <span className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded shrink-0 font-medium">
+                                پروژه
+                              </span>
+                            ) : (
+                              <span className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded shrink-0 font-medium">
+                                عمومی
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-xs text-gray-400 whitespace-nowrap shrink-0">
+                            {formatTime(conv.last_message_time)}
+                          </span>
+                        </div>
+                        {conv.post_title && (
+                          <p className="text-[10px] text-blue-600 truncate mb-0.5 font-medium">
+                            📋 {conv.post_title}
+                          </p>
+                        )}
+                        <div className="flex justify-between items-center gap-2">
+                          <p
+                            className={`text-sm truncate ${
+                              conv.unread_count > 0
+                                ? "text-gray-700 font-medium"
+                                : "text-gray-500"
+                            }`}
+                          >
+                            {conv.last_message}
+                          </p>
+                          {conv.unread_count > 0 && (
+                            <div className="min-w-[22px] h-[22px] px-1.5 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 shadow">
+                              {conv.unread_count > 9
+                                ? "9+"
+                                : conv.unread_count}
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-20 px-6 text-center min-h-[60vh]">
@@ -803,7 +881,7 @@ export default function MessagesPage() {
                   با ارسال پیام به آگهی‌ها، مکالمه خود را شروع کنید
                 </p>
                 <button
-                  onClick={() => router.push('/explore')}
+                  onClick={() => router.push("/explore")}
                   className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-3 rounded-xl font-semibold shadow-lg shadow-blue-500/30 hover:shadow-xl transition-all active:scale-[0.98]"
                 >
                   جستجوی آگهی
@@ -813,6 +891,13 @@ export default function MessagesPage() {
           </div>
         </>
       )}
+
+      <RatingModal
+        open={showRating}
+        targetName={currentChat?.user_name || "کاربر"}
+        onClose={() => setShowRating(false)}
+        onSubmit={handleSubmitRating}
+      />
     </div>
   );
 }

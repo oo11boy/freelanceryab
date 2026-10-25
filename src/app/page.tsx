@@ -5,6 +5,7 @@ import PostCard from "./components/PostCard";
 import { postsAPI } from "./services/api";
 import { CATEGORIES } from "./constants/categories";
 import Header from "./components/Header";
+import TopFreelancers from "./components/TopFreelancers";
 
 interface Post {
   id: number;
@@ -54,22 +55,14 @@ export default function HomePage() {
     return `${Math.floor(days / 30)} ماه پیش`;
   };
 
-  // آمار سریع هیرو (نمایشی)
-  const stats = [
-    { label: "آگهی فعال", value: posts.length > 0 ? `+${posts.length}` : "—", icon: "📋" },
-    { label: "فریلنسر", value: "۱٬۲۰۰+", icon: "👥" },
-    { label: "پروژه موفق", value: "۳٬۵۰۰+", icon: "✅" },
-  ];
-
   return (
     <div className="pb-2 min-h-screen bg-gray-50">
       {/* هدر */}
-  <Header/>
+      <Header  />
 
       {/* هیرو کارت */}
       <div className="px-4 pt-4">
         <div className="relative bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 rounded-3xl p-5 text-white overflow-hidden shadow-xl shadow-blue-500/20">
-          {/* دکوریشن */}
           <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -translate-y-20 translate-x-20" />
           <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/10 rounded-full translate-y-16 -translate-x-16" />
 
@@ -85,21 +78,52 @@ export default function HomePage() {
               هزاران فرصت شغلی آنلاین در انتظار توست
             </p>
 
-            {/* <div className="grid grid-cols-3 gap-2">
-              {stats.map((s, i) => (
-                <div
-                  key={i}
-                  className="bg-white/15 backdrop-blur-sm rounded-xl p-2.5 text-center"
+            <div className="flex gap-2">
+              <Link
+                href="/explore"
+                className="flex-1 bg-white text-indigo-700 py-2.5 rounded-xl text-xs font-bold shadow-md hover:shadow-lg active:scale-[0.98] transition-all text-center flex items-center justify-center gap-1"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
                 >
-                  <div className="text-base mb-0.5">{s.icon}</div>
-                  <div className="text-sm font-bold">{s.value}</div>
-                  <div className="text-[10px] opacity-80">{s.label}</div>
-                </div>
-              ))}
-            </div> */}
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2.5}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+                جستجوی پروژه
+              </Link>
+              <Link
+                href="/create-post"
+                className="flex-1 bg-white/20 backdrop-blur-sm border border-white/30 text-white py-2.5 rounded-xl text-xs font-bold hover:bg-white/30 active:scale-[0.98] transition-all text-center flex items-center justify-center gap-1"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2.5}
+                    d="M12 4v16m8-8H4"
+                  />
+                </svg>
+                ثبت آگهی
+              </Link>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* بهترین فریلنسرها */}
+      <TopFreelancers />
 
       {/* دسته‌بندی‌ها */}
       <div className="mt-5">

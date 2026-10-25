@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/app/hooks/useAuth';
-import { profileAPI, postsAPI, savedAPI } from '@/app/services/api';
+import { profileAPI, postsAPI, savedAPI, profileReviewsAPI } from '@/app/services/api';
 import PostCard from '@/app/components/PostCard';
 
 interface UserPost {
@@ -24,33 +24,75 @@ interface SavedPost {
   created_at: string;
 }
 
+interface Review {
+  id: number;
+  rating: number;
+  comment: string | null;
+  created_at: string;
+  reviewer_id: number;
+  reviewer_name: string;
+  reviewer_avatar: string | null;
+  post_id: number;
+  post_title: string | null;
+}
+
+interface CompletedContract {
+  contract_id: number;
+  completed_at: string;
+  post_id: number;
+  post_title: string;
+  other_user_id: number;
+  other_user_name: string;
+  other_user_avatar: string | null;
+  my_role: 'client' | 'freelancer';
+}
+
+interface RatingStats {
+  total: number;
+  average: number;
+  distribution: { 5: number; 4: number; 3: number; 2: number; 1: number };
+}
+
 export default function ProfilePage() {
   const router = useRouter();
   const { user, token, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('posts');
   const [userPosts, setUserPosts] = useState<UserPost[]>([]);
   const [savedPosts, setSavedPosts] = useState<SavedPost[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [completedContracts, setCompletedContracts] = useState<CompletedContract[]>([]);
+  const [ratingStats, setRatingStats] = useState<RatingStats>({
+    total: 0,
+    average: 0,
+    distribution: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 },
+  });
   const [loading, setLoading] = useState(true);
   const [savedLoading, setSavedLoading] = useState(false);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [reviewsLoaded, setReviewsLoaded] = useState(false);
   const [stats, setStats] = useState({
     active: 0,
     completed: 0,
     totalViews: 0,
   });
 
-  // بارگذاری آگهی‌های کاربر هر بار mount شد
   useEffect(() => {
     if (user) {
       loadUserPosts();
     }
   }, [user]);
 
-  // بارگذاری ذخیره‌ها هر بار تب saved فعال شد (همیشه تازه)
   useEffect(() => {
     if (activeTab === 'saved' && token) {
       loadSavedPosts();
     }
   }, [activeTab, token]);
+
+  useEffect(() => {
+    if (activeTab === 'reviews' && token && !reviewsLoaded) {
+      loadReviews();
+    }
+  }, [activeTab, token, reviewsLoaded]);
 
   const loadUserPosts = async () => {
     try {
@@ -81,6 +123,21 @@ export default function ProfilePage() {
     }
   };
 
+  const loadReviews = async () => {
+    setReviewsLoading(true);
+    try {
+      const data = await profileReviewsAPI.get();
+      setReviews(data.reviews || []);
+      setCompletedContracts(data.completedContracts || []);
+      setRatingStats(data.stats || { total: 0, average: 0, distribution: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 } });
+      setReviewsLoaded(true);
+    } catch (error) {
+      console.error('خطا در دریافت نظرات:', error);
+    } finally {
+      setReviewsLoading(false);
+    }
+  };
+
   const handleDeletePost = async (id: number) => {
     if (!confirm('آیا از حذف این آگهی مطمئن هستید؟')) return;
 
@@ -106,7 +163,9 @@ export default function ProfilePage() {
     const hours = Math.floor(diff / (1000 * 60 * 60));
     if (hours < 1) return 'لحظاتی پیش';
     if (hours < 24) return `${hours} ساعت پیش`;
-    return `${Math.floor(hours / 24)} روز پیش`;
+    const days = Math.floor(hours / 24);
+    if (days < 30) return `${days} روز پیش`;
+    return `${Math.floor(days / 30)} ماه پیش`;
   };
 
   if (!token) {
@@ -132,6 +191,13 @@ export default function ProfilePage() {
       </div>
     );
   }
+
+  const tabs = [
+    { id: 'posts', label: 'آگهی‌ها', icon: '📝' },
+    { id: 'reviews', label: 'نظرات', icon: '⭐' },
+    { id: 'info', label: 'اطلاعات', icon: '👤' },
+    { id: 'saved', label: 'ذخیره‌ها', icon: '❤️' },
+  ];
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
@@ -168,12 +234,29 @@ export default function ProfilePage() {
               <p className="text-sm opacity-80 mt-1" dir="ltr">
                 {user?.phone}
               </p>
+              {reviewsLoaded && ratingStats.total > 0 && (
+                <div className="flex items-center gap-1.5 mt-2">
+                  <div className="flex items-center gap-0.5">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <span key={star} className="text-sm">
+                        {star <= Math.round(ratingStats.average) ? '⭐' : '☆'}
+                      </span>
+                    ))}
+                  </div>
+                  <span className="text-xs font-bold">
+                    {ratingStats.average.toFixed(1)}
+                  </span>
+                  <span className="text-[10px] opacity-80">
+                    ({ratingStats.total} نظر)
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* آمار - کارت شناور */}
+      {/* آمار */}
       <div className="-mt-12 px-4 relative z-10">
         <div className="bg-white rounded-2xl shadow-lg shadow-gray-200/50 p-4 grid grid-cols-3 divide-x divide-x-reverse divide-gray-100">
           <div className="text-center px-2">
@@ -192,16 +275,12 @@ export default function ProfilePage() {
       </div>
 
       {/* تب‌ها */}
-      <div className="mt-6 mx-4 bg-white rounded-xl p-1.5 shadow-sm flex">
-        {[
-          { id: 'posts', label: 'آگهی‌ها', icon: '📝' },
-          { id: 'info', label: 'اطلاعات', icon: '👤' },
-          { id: 'saved', label: 'ذخیره‌ها', icon: '❤️' },
-        ].map(tab => (
+      <div className="mt-6 mx-4 bg-white rounded-xl p-1.5 shadow-sm flex overflow-x-auto hide-scrollbar">
+        {tabs.map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-1.5 ${
+            className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${
               activeTab === tab.id
                 ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md'
                 : 'text-gray-500 hover:text-gray-700'
@@ -291,6 +370,186 @@ export default function ProfilePage() {
                   ثبت آگهی جدید
                 </Link>
               </div>
+            )}
+          </div>
+        )}
+
+        {/* تب نظرات */}
+        {activeTab === 'reviews' && (
+          <div className="space-y-4">
+            {reviewsLoading ? (
+              <div className="space-y-3">
+                {[1, 2].map(i => (
+                  <div key={i} className="bg-white rounded-2xl p-4 shadow-sm animate-pulse">
+                    <div className="h-4 bg-gray-200 rounded w-1/3 mb-3" />
+                    <div className="h-3 bg-gray-100 rounded w-full mb-2" />
+                    <div className="h-3 bg-gray-100 rounded w-2/3" />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <>
+                {/* کارت آمار امتیاز */}
+                {ratingStats.total > 0 && (
+                  <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-4 shadow-sm">
+                    <div className="flex items-center gap-4">
+                      <div className="text-center shrink-0">
+                        <div className="text-3xl font-bold text-amber-600">
+                          {ratingStats.average.toFixed(1)}
+                        </div>
+                        <div className="flex items-center gap-0.5 mt-0.5">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <span key={star} className="text-xs">
+                              {star <= Math.round(ratingStats.average) ? '⭐' : '☆'}
+                            </span>
+                          ))}
+                        </div>
+                        <div className="text-[10px] text-amber-700 mt-0.5">
+                          {ratingStats.total} نظر
+                        </div>
+                      </div>
+                      <div className="flex-1 space-y-1">
+                        {[5, 4, 3, 2, 1].map((star) => {
+                          const count = ratingStats.distribution[star as keyof typeof ratingStats.distribution] || 0;
+                          const percent = ratingStats.total > 0 ? (count / ratingStats.total) * 100 : 0;
+                          return (
+                            <div key={star} className="flex items-center gap-2">
+                              <span className="text-[10px] text-amber-700 font-medium w-3">
+                                {star}
+                              </span>
+                              <span className="text-[10px]">⭐</span>
+                              <div className="flex-1 bg-white/60 rounded-full h-1.5 overflow-hidden">
+                                <div
+                                  className="bg-gradient-to-r from-amber-400 to-orange-500 h-full rounded-full transition-all"
+                                  style={{ width: `${percent}%` }}
+                                />
+                              </div>
+                              <span className="text-[10px] text-amber-700 font-medium w-4 text-left">
+                                {count}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* نظرات */}
+                {reviews.length > 0 ? (
+                  <div className="space-y-2.5">
+                    {reviews.map((review) => (
+                      <div
+                        key={review.id}
+                        className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100"
+                      >
+                        <div className="flex items-start gap-3">
+                          <Link
+                            href={`/user/${review.reviewer_id}`}
+                            className="shrink-0"
+                          >
+                            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
+                              {review.reviewer_name?.charAt(0) || '👤'}
+                            </div>
+                          </Link>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2 mb-1">
+                              <Link
+                                href={`/user/${review.reviewer_id}`}
+                                className="font-semibold text-sm text-gray-800 truncate hover:text-blue-600"
+                              >
+                                {review.reviewer_name}
+                              </Link>
+                              <span className="text-[10px] text-gray-400 whitespace-nowrap shrink-0">
+                                {formatTimeAgo(review.created_at)}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1 mb-1.5">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <span key={star} className="text-xs">
+                                  {star <= review.rating ? '⭐' : '☆'}
+                                </span>
+                              ))}
+                              <span className="text-[10px] text-amber-700 font-bold mr-1">
+                                {review.rating}/۵
+                              </span>
+                            </div>
+                            {review.comment && (
+                              <p className="text-xs text-gray-600 leading-relaxed">
+                                {review.comment}
+                              </p>
+                            )}
+                            {review.post_title && (
+                              <Link
+                                href={`/post/${review.post_id}`}
+                                className="inline-flex items-center gap-1 mt-2 text-[10px] bg-blue-50 text-blue-700 px-2 py-1 rounded-md hover:bg-blue-100 transition-colors"
+                              >
+                                📋 {review.post_title}
+                              </Link>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="bg-white rounded-2xl p-10 text-center shadow-sm">
+                    <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-amber-50 to-orange-100 flex items-center justify-center text-4xl">
+                      ⭐
+                    </div>
+                    <p className="text-gray-700 font-semibold mb-1">
+                      هنوز نظری ندارید
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      بعد از تکمیل پروژه‌ها، نظرات کاربران اینجا نمایش داده می‌شود
+                    </p>
+                  </div>
+                )}
+
+                {/* پروژه‌های انجام‌شده */}
+                {completedContracts.length > 0 && (
+                  <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+                    <h3 className="text-sm font-bold text-gray-800 flex items-center gap-1.5 mb-3">
+                      <span>✅</span> پروژه‌های انجام‌شده ({completedContracts.length})
+                    </h3>
+                    <div className="space-y-2">
+                      {completedContracts.map((contract) => (
+                        <div
+                          key={contract.contract_id}
+                          className="bg-gray-50 rounded-xl p-3 flex items-center gap-2.5"
+                        >
+                          <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0">
+                            ✓
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <Link
+                              href={`/post/${contract.post_id}`}
+                              className="text-xs font-semibold text-gray-800 truncate block hover:text-blue-600"
+                            >
+                              {contract.post_title}
+                            </Link>
+                            <div className="flex items-center gap-2 text-[10px] text-gray-500 mt-0.5">
+                              <span>
+                                {contract.my_role === 'client'
+                                  ? 'به عنوان کارفرما'
+                                  : 'به عنوان فریلنسر'}
+                              </span>
+                              <span>•</span>
+                              <span>{formatTimeAgo(contract.completed_at)}</span>
+                            </div>
+                          </div>
+                          <Link
+                            href={`/user/${contract.other_user_id}`}
+                            className="text-[10px] text-blue-600 font-medium shrink-0 hover:underline"
+                          >
+                            {contract.other_user_name}
+                          </Link>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
@@ -394,6 +653,16 @@ export default function ProfilePage() {
           </div>
         )}
       </div>
+
+      <style jsx>{`
+        .hide-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+        .hide-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+      `}</style>
     </div>
   );
 }
