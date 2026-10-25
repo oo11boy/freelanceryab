@@ -13,6 +13,12 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: "فریلنسرکار | دیوار خدمات آنلاین",
   description: "بازار کارهای مجازی مثل برنامه‌نویسی، تحقیق، ترجمه",
+  manifest: "/manifest.json",
+  appleWebApp: { capable: true, statusBarStyle: "default", title: "فریلنسرکار" },
+  icons: {
+    icon: "/icons/icon-192.png",
+    apple: "/icons/icon-192.png",
+  },
 };
 
 export default function RootLayout({
