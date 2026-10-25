@@ -3,6 +3,6 @@
   "target": {
     "namespace": "android_app",
     "package_name": "com.freelancerkar.unicodewebdesign",
-    "sha256_cert_fingerprints": ["YOUR_SHA256_FINGERPRINT_HERE"]
+    "sha256_cert_fingerprints": ["8c:c5:d5:30:56:4b:bd:64:a0:15:6f:b9:b9:55:52:60:5d:40:e3:e7:0d:5e:17:d4:54:c0:07:fa:21:09:46:6b"]
   }
 }]
