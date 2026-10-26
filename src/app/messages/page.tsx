@@ -1,13 +1,13 @@
 // app/messages/page.tsx
-"use client";
-import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
-import { useAuth } from "@/app/hooks/useAuth";
-import { useUILayout } from "@/app/hooks/useUILayout";
-import { messagesAPI, contractsAPI, reviewsAPI } from "@/app/services/api";
-import { initializeSocket, getSocket } from "@/app/services/socket";
-import ContractBar from "@/app/components/ContractBar";
-import RatingModal from "@/app/components/RatingModal";
+'use client';
+import { useState, useEffect, useRef } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useAuth } from '@/app/hooks/useAuth';
+import { useUILayout } from '@/app/hooks/useUILayout';
+import { messagesAPI, contractsAPI, reviewsAPI } from '@/app/services/api';
+import { initializeSocket, getSocket } from '@/app/services/socket';
+import ContractBar from '@/app/components/ContractBar';
+import RatingModal from '@/app/components/RatingModal';
 
 interface Message {
   id: number;
@@ -26,6 +26,7 @@ interface Conversation {
   user_id: number;
   user_name: string;
   user_avatar: string;
+  online_status?: number;
   last_message: string;
   last_message_time: string;
   unread_count: number;
@@ -36,8 +37,9 @@ interface ContractData {
   contract: any;
   myReview: any;
   otherReview: any;
-  role: "client" | "freelancer" | null;
+  role: 'client' | 'freelancer' | null;
   postOwnerId: number | null;
+  postStatus: string | null;
 }
 
 const EMPTY_CONTRACT: ContractData = {
@@ -46,17 +48,19 @@ const EMPTY_CONTRACT: ContractData = {
   otherReview: null,
   role: null,
   postOwnerId: null,
+  postStatus: null,
 };
 
-export default function MessagesPage() {
+function MessagesContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, token, loading: authLoading } = useAuth();
   const { setHideBottomNav } = useUILayout();
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedChat, setSelectedChat] = useState<number | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [newMessage, setNewMessage] = useState("");
+  const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
@@ -73,6 +77,7 @@ export default function MessagesPage() {
   const postIdRef = useRef<number | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const initializedFromUrl = useRef(false);
 
   useEffect(() => {
     selectedChatRef.current = selectedChat;
@@ -99,31 +104,28 @@ export default function MessagesPage() {
         container.style.height = `${vv.height}px`;
         container.style.top = `${vv.offsetTop}px`;
       }
-      scrollToBottom("auto");
+      scrollToBottom('auto');
     };
 
-    vv.addEventListener("resize", onResize);
-    vv.addEventListener("scroll", onResize);
+    vv.addEventListener('resize', onResize);
+    vv.addEventListener('scroll', onResize);
     onResize();
 
     return () => {
-      vv.removeEventListener("resize", onResize);
-      vv.removeEventListener("scroll", onResize);
+      vv.removeEventListener('resize', onResize);
+      vv.removeEventListener('scroll', onResize);
       const container = chatContainerRef.current;
       if (container) {
-        container.style.height = "";
-        container.style.top = "";
+        container.style.height = '';
+        container.style.top = '';
       }
     };
   }, [selectedChat]);
 
-  const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
+  const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
     const container = messagesContainerRef.current;
     if (container) {
-      container.scrollTo({
-        top: container.scrollHeight,
-        behavior,
-      });
+      container.scrollTo({ top: container.scrollHeight, behavior });
     }
   };
 
@@ -131,11 +133,12 @@ export default function MessagesPage() {
   useEffect(() => {
     if (authLoading) return;
     if (!token) {
-      router.push("/login");
+      router.push('/login');
       return;
     }
 
     const socket = initializeSocket(token);
+    if (!socket) return;
 
     const onConnect = () => setIsConnected(true);
     const onDisconnect = () => setIsConnected(false);
@@ -159,7 +162,7 @@ export default function MessagesPage() {
         });
 
         if (data.receiver_id === myId) {
-          socket.emit("mark_read", {
+          socket.emit('mark_read', {
             message_id: data.id,
             sender_id: data.sender_id,
           });
@@ -242,38 +245,38 @@ export default function MessagesPage() {
     };
 
     const onMessageError = (data: { error: string }) => {
-      console.error("Message error:", data.error);
+      console.error('Message error:', data.error);
       alert(data.error);
     };
 
-    socket.on("connect", onConnect);
-    socket.on("disconnect", onDisconnect);
-    socket.on("new_message", onNewMessage);
-    socket.on("message_sent", onMessageSent);
-    socket.on("message_read", onMessageRead);
-    socket.on("conversation_read", onConversationRead);
-    socket.on("online_users", onOnlineUsers);
-    socket.on("user_online", onUserOnline);
-    socket.on("user_offline", onUserOffline);
-    socket.on("user_typing", onUserTyping);
-    socket.on("message_error", onMessageError);
+    socket.on('connect', onConnect);
+    socket.on('disconnect', onDisconnect);
+    socket.on('new_message', onNewMessage);
+    socket.on('message_sent', onMessageSent);
+    socket.on('message_read', onMessageRead);
+    socket.on('conversation_read', onConversationRead);
+    socket.on('online_users', onOnlineUsers);
+    socket.on('user_online', onUserOnline);
+    socket.on('user_offline', onUserOffline);
+    socket.on('user_typing', onUserTyping);
+    socket.on('message_error', onMessageError);
 
     if (socket.connected) setIsConnected(true);
 
     loadConversations();
 
     return () => {
-      socket.off("connect", onConnect);
-      socket.off("disconnect", onDisconnect);
-      socket.off("new_message", onNewMessage);
-      socket.off("message_sent", onMessageSent);
-      socket.off("message_read", onMessageRead);
-      socket.off("conversation_read", onConversationRead);
-      socket.off("online_users", onOnlineUsers);
-      socket.off("user_online", onUserOnline);
-      socket.off("user_offline", onUserOffline);
-      socket.off("user_typing", onUserTyping);
-      socket.off("message_error", onMessageError);
+      socket.off('connect', onConnect);
+      socket.off('disconnect', onDisconnect);
+      socket.off('new_message', onNewMessage);
+      socket.off('message_sent', onMessageSent);
+      socket.off('message_read', onMessageRead);
+      socket.off('conversation_read', onConversationRead);
+      socket.off('online_users', onOnlineUsers);
+      socket.off('user_online', onUserOnline);
+      socket.off('user_offline', onUserOffline);
+      socket.off('user_typing', onUserTyping);
+      socket.off('message_error', onMessageError);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, authLoading, user?.id]);
@@ -281,25 +284,26 @@ export default function MessagesPage() {
   // اسکرول خودکار
   useEffect(() => {
     if (messages.length > 0) {
-      const t = setTimeout(() => scrollToBottom("smooth"), 100);
+      const t = setTimeout(() => scrollToBottom('smooth'), 100);
       return () => clearTimeout(t);
     }
   }, [messages]);
 
   useEffect(() => {
     if (selectedChat) {
-      const t = setTimeout(() => scrollToBottom("auto"), 400);
+      const t = setTimeout(() => scrollToBottom('auto'), 400);
       return () => clearTimeout(t);
     }
   }, [selectedChat]);
 
-  // بارگذاری‌ها
   const loadConversations = async () => {
     try {
       const data = await messagesAPI.getConversations();
       setConversations(data.conversations || []);
+      return data.conversations || [];
     } catch (error) {
-      console.error("خطا در بارگذاری مکالمات:", error);
+      console.error('خطا در بارگذاری مکالمات:', error);
+      return [];
     }
   };
 
@@ -311,10 +315,10 @@ export default function MessagesPage() {
 
       const socket = getSocket();
       if (socket) {
-        socket.emit("mark_conversation_read", { sender_id: userId });
+        socket.emit('mark_conversation_read', { sender_id: userId });
       }
     } catch (error) {
-      console.error("خطا در بارگذاری پیام‌ها:", error);
+      console.error('خطا در بارگذاری پیام‌ها:', error);
     } finally {
       setLoading(false);
     }
@@ -333,9 +337,10 @@ export default function MessagesPage() {
         otherReview: data.otherReview,
         role: data.role,
         postOwnerId: data.postOwnerId,
+        postStatus: data.postStatus,
       });
     } catch (error) {
-      console.error("خطا در بارگذاری قرارداد:", error);
+      console.error('خطا در بارگذاری قرارداد:', error);
     }
   };
 
@@ -348,6 +353,33 @@ export default function MessagesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedChat, postIdForChat]);
 
+  // باز کردن چت از URL
+  useEffect(() => {
+    if (initializedFromUrl.current) return;
+    if (conversations.length === 0) return;
+
+    const userIdParam = searchParams.get('user');
+    const postIdParam = searchParams.get('post');
+
+    if (!userIdParam) return;
+
+    const userIdNum = parseInt(userIdParam, 10);
+    const postIdNum = postIdParam ? parseInt(postIdParam, 10) : null;
+
+    if (isNaN(userIdNum)) return;
+
+    const conv = conversations.find(
+      (c) => c.user_id === userIdNum && (c.post_id ?? null) === (postIdNum ?? null)
+    );
+
+    if (conv) {
+      initializedFromUrl.current = true;
+      handleSelectConversation(conv);
+      router.replace('/messages', { scroll: false });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversations, searchParams]);
+
   const handleSelectConversation = async (conv: Conversation) => {
     setSelectedChat(conv.user_id);
     setPostIdForChat(conv.post_id);
@@ -356,7 +388,15 @@ export default function MessagesPage() {
     await loadMessages(conv.user_id, conv.post_id);
   };
 
-  // ارسال پیام
+  const handleBack = () => {
+    setSelectedChat(null);
+    setPostIdForChat(null);
+    setPostTitleForChat(null);
+    setMessages([]);
+    setContractData(EMPTY_CONTRACT);
+    loadConversations();
+  };
+
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !selectedChat || sending) return;
 
@@ -364,30 +404,30 @@ export default function MessagesPage() {
     try {
       const socket = getSocket();
       if (socket?.connected) {
-        socket.emit("send_message", {
+        socket.emit('send_message', {
           receiver_id: selectedChat,
           message: newMessage.trim(),
           post_id: postIdForChat || undefined,
         });
-        setNewMessage("");
+        setNewMessage('');
       } else {
         await messagesAPI.sendMessage(
           selectedChat,
           newMessage.trim(),
           postIdForChat || undefined
         );
-        setNewMessage("");
+        setNewMessage('');
         await loadMessages(selectedChat, postIdForChat);
       }
 
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
       }
-      socket?.emit("typing", { receiver_id: selectedChat, is_typing: false });
+      socket?.emit('typing', { receiver_id: selectedChat, is_typing: false });
       inputRef.current?.focus();
     } catch (error) {
-      console.error("خطا:", error);
-      alert("خطا در ارسال پیام");
+      console.error('خطا:', error);
+      alert('خطا در ارسال پیام');
     } finally {
       setSending(false);
     }
@@ -398,13 +438,13 @@ export default function MessagesPage() {
     const socket = getSocket();
     if (!socket || !selectedChat) return;
 
-    socket.emit("typing", { receiver_id: selectedChat, is_typing: true });
+    socket.emit('typing', { receiver_id: selectedChat, is_typing: true });
 
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
     }
     typingTimeoutRef.current = setTimeout(() => {
-      socket.emit("typing", { receiver_id: selectedChat, is_typing: false });
+      socket.emit('typing', { receiver_id: selectedChat, is_typing: false });
     }, 1500);
   };
 
@@ -414,7 +454,6 @@ export default function MessagesPage() {
     await loadContract();
   };
 
-  // فرمت زمان
   const formatTime = (date: string) => {
     try {
       const d = new Date(date);
@@ -425,18 +464,18 @@ export default function MessagesPage() {
       const isYesterday = d.toDateString() === yesterday.toDateString();
 
       if (isToday) {
-        return d.toLocaleTimeString("fa-IR", {
-          hour: "2-digit",
-          minute: "2-digit",
+        return d.toLocaleTimeString('fa-IR', {
+          hour: '2-digit',
+          minute: '2-digit',
         });
       }
-      if (isYesterday) return "دیروز";
-      return d.toLocaleDateString("fa-IR", {
-        month: "short",
-        day: "numeric",
+      if (isYesterday) return 'دیروز';
+      return d.toLocaleDateString('fa-IR', {
+        month: 'short',
+        day: 'numeric',
       });
     } catch {
-      return "";
+      return '';
     }
   };
 
@@ -444,17 +483,17 @@ export default function MessagesPage() {
     try {
       const d = new Date(date);
       const now = new Date();
-      if (d.toDateString() === now.toDateString()) return "امروز";
+      if (d.toDateString() === now.toDateString()) return 'امروز';
       const yesterday = new Date(now);
       yesterday.setDate(now.getDate() - 1);
-      if (d.toDateString() === yesterday.toDateString()) return "دیروز";
-      return d.toLocaleDateString("fa-IR", {
-        weekday: "long",
-        month: "long",
-        day: "numeric",
+      if (d.toDateString() === yesterday.toDateString()) return 'دیروز';
+      return d.toLocaleDateString('fa-IR', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
       });
     } catch {
-      return "";
+      return '';
     }
   };
 
@@ -484,14 +523,14 @@ export default function MessagesPage() {
           ref={chatContainerRef}
           className="fixed inset-x-0 top-0 flex flex-col bg-gradient-to-b from-blue-50 via-gray-50 to-gray-50 z-30"
           style={{
-            height: "100dvh",
-            paddingBottom: "env(safe-area-inset-bottom)",
+            height: '100dvh',
+            paddingBottom: 'env(safe-area-inset-bottom)',
           }}
         >
           {/* هدر چت */}
           <div className="bg-white/95 backdrop-blur-md border-b border-gray-200 px-3 py-3 flex items-center gap-2 shrink-0 shadow-sm">
             <button
-              onClick={() => setSelectedChat(null)}
+              onClick={handleBack}
               className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-100 active:scale-95 transition-all"
               aria-label="بازگشت"
             >
@@ -511,7 +550,7 @@ export default function MessagesPage() {
             </button>
             <div className="relative">
               <div className="w-11 h-11 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-lg text-white font-bold shadow-md">
-                {currentChat.user_name?.charAt(0) || "👤"}
+                {currentChat.user_name?.charAt(0) || '👤'}
               </div>
               {currentChat.online && (
                 <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-white shadow" />
@@ -528,15 +567,15 @@ export default function MessagesPage() {
                     <span className="flex gap-0.5">
                       <span
                         className="w-1 h-1 bg-blue-600 rounded-full animate-bounce"
-                        style={{ animationDelay: "0ms" }}
+                        style={{ animationDelay: '0ms' }}
                       />
                       <span
                         className="w-1 h-1 bg-blue-600 rounded-full animate-bounce"
-                        style={{ animationDelay: "150ms" }}
+                        style={{ animationDelay: '150ms' }}
                       />
                       <span
                         className="w-1 h-1 bg-blue-600 rounded-full animate-bounce"
-                        style={{ animationDelay: "300ms" }}
+                        style={{ animationDelay: '300ms' }}
                       />
                     </span>
                   </span>
@@ -598,6 +637,7 @@ export default function MessagesPage() {
               onRate={() => setShowRating(true)}
               hasRated={!!contractData.myReview}
               otherReview={contractData.otherReview}
+              postStatus={contractData.postStatus}
             />
           )}
 
@@ -639,14 +679,14 @@ export default function MessagesPage() {
                       )}
                       <div
                         className={`flex items-end gap-1.5 ${
-                          isMe ? "justify-end" : "justify-start"
+                          isMe ? 'justify-end' : 'justify-start'
                         }`}
                       >
                         {!isMe && (
                           <div className="w-7 shrink-0">
                             {showAvatar ? (
                               <div className="w-7 h-7 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-xs text-white font-bold">
-                                {currentChat.user_name?.charAt(0) || "👤"}
+                                {currentChat.user_name?.charAt(0) || '👤'}
                               </div>
                             ) : (
                               <div className="w-7 h-7" />
@@ -656,8 +696,8 @@ export default function MessagesPage() {
                         <div
                           className={`max-w-[78%] rounded-2xl px-3.5 py-2.5 shadow-sm ${
                             isMe
-                              ? "bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-br-sm"
-                              : "bg-white text-gray-800 rounded-bl-sm border border-gray-100"
+                              ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-br-sm'
+                              : 'bg-white text-gray-800 rounded-bl-sm border border-gray-100'
                           }`}
                         >
                           <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
@@ -665,7 +705,7 @@ export default function MessagesPage() {
                           </p>
                           <div
                             className={`flex items-center justify-end gap-1 mt-1 text-[10px] ${
-                              isMe ? "text-blue-100" : "text-gray-400"
+                              isMe ? 'text-blue-100' : 'text-gray-400'
                             }`}
                           >
                             <span>{formatTime(msg.created_at)}</span>
@@ -673,11 +713,11 @@ export default function MessagesPage() {
                               <span
                                 className={
                                   msg.is_read
-                                    ? "text-blue-100"
-                                    : "text-blue-200/70"
+                                    ? 'text-blue-100'
+                                    : 'text-blue-200/70'
                                 }
                               >
-                                {msg.is_read ? "✓✓" : "✓"}
+                                {msg.is_read ? '✓✓' : '✓'}
                               </span>
                             )}
                           </div>
@@ -689,21 +729,21 @@ export default function MessagesPage() {
                 {isTyping && (
                   <div className="flex items-end gap-1.5 justify-start">
                     <div className="w-7 h-7 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-xs text-white font-bold">
-                      {currentChat.user_name?.charAt(0) || "👤"}
+                      {currentChat.user_name?.charAt(0) || '👤'}
                     </div>
                     <div className="bg-white border border-gray-100 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm">
                       <div className="flex gap-1">
                         <span
                           className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-                          style={{ animationDelay: "0ms" }}
+                          style={{ animationDelay: '0ms' }}
                         />
                         <span
                           className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-                          style={{ animationDelay: "150ms" }}
+                          style={{ animationDelay: '150ms' }}
                         />
                         <span
                           className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-                          style={{ animationDelay: "300ms" }}
+                          style={{ animationDelay: '300ms' }}
                         />
                       </div>
                     </div>
@@ -735,7 +775,7 @@ export default function MessagesPage() {
                   value={newMessage}
                   onChange={(e) => handleTyping(e.target.value)}
                   onKeyDown={(e) =>
-                    e.key === "Enter" && !e.shiftKey && handleSendMessage()
+                    e.key === 'Enter' && !e.shiftKey && handleSendMessage()
                   }
                   placeholder="پیام خود را بنویسید..."
                   className="w-full bg-gray-100 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
@@ -771,18 +811,18 @@ export default function MessagesPage() {
                 <h1 className="text-xl font-bold text-gray-800">پیام‌ها</h1>
                 {totalUnread > 0 && (
                   <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-                    {totalUnread > 99 ? "99+" : totalUnread}
+                    {totalUnread > 99 ? '99+' : totalUnread}
                   </span>
                 )}
               </div>
               <div className="flex items-center gap-1.5">
                 <div
                   className={`w-2 h-2 rounded-full ${
-                    isConnected ? "bg-green-500" : "bg-red-500 animate-pulse"
+                    isConnected ? 'bg-green-500' : 'bg-red-500 animate-pulse'
                   }`}
                 />
                 <span className="text-xs text-gray-500">
-                  {isConnected ? "آنلاین" : "قطع"}
+                  {isConnected ? 'آنلاین' : 'قطع'}
                 </span>
               </div>
             </div>
@@ -792,7 +832,7 @@ export default function MessagesPage() {
             {conversations.length > 0 ? (
               <div className="divide-y divide-gray-100 bg-white">
                 {conversations.map((conv) => {
-                  const key = `${conv.user_id}-${conv.post_id ?? "general"}`;
+                  const key = `${conv.user_id}-${conv.post_id ?? 'general'}`;
                   return (
                     <div
                       key={key}
@@ -800,7 +840,7 @@ export default function MessagesPage() {
                       tabIndex={0}
                       onClick={() => handleSelectConversation(conv)}
                       onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
+                        if (e.key === 'Enter' || e.key === ' ') {
                           e.preventDefault();
                           handleSelectConversation(conv);
                         }
@@ -809,7 +849,7 @@ export default function MessagesPage() {
                     >
                       <div className="relative shrink-0">
                         <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-xl text-white font-bold shadow-md">
-                          {conv.user_name?.charAt(0) || "👤"}
+                          {conv.user_name?.charAt(0) || '👤'}
                         </div>
                         {conv.online && (
                           <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-white shadow" />
@@ -821,8 +861,8 @@ export default function MessagesPage() {
                             <span
                               className={`font-semibold truncate ${
                                 conv.unread_count > 0
-                                  ? "text-gray-900"
-                                  : "text-gray-700"
+                                  ? 'text-gray-900'
+                                  : 'text-gray-700'
                               }`}
                             >
                               {conv.user_name}
@@ -850,8 +890,8 @@ export default function MessagesPage() {
                           <p
                             className={`text-sm truncate ${
                               conv.unread_count > 0
-                                ? "text-gray-700 font-medium"
-                                : "text-gray-500"
+                                ? 'text-gray-700 font-medium'
+                                : 'text-gray-500'
                             }`}
                           >
                             {conv.last_message}
@@ -859,7 +899,7 @@ export default function MessagesPage() {
                           {conv.unread_count > 0 && (
                             <div className="min-w-[22px] h-[22px] px-1.5 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 shadow">
                               {conv.unread_count > 9
-                                ? "9+"
+                                ? '9+'
                                 : conv.unread_count}
                             </div>
                           )}
@@ -881,7 +921,7 @@ export default function MessagesPage() {
                   با ارسال پیام به آگهی‌ها، مکالمه خود را شروع کنید
                 </p>
                 <button
-                  onClick={() => router.push("/explore")}
+                  onClick={() => router.push('/explore')}
                   className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-3 rounded-xl font-semibold shadow-lg shadow-blue-500/30 hover:shadow-xl transition-all active:scale-[0.98]"
                 >
                   جستجوی آگهی
@@ -894,10 +934,31 @@ export default function MessagesPage() {
 
       <RatingModal
         open={showRating}
-        targetName={currentChat?.user_name || "کاربر"}
+        targetName={currentChat?.user_name || 'کاربر'}
         onClose={() => setShowRating(false)}
         onSubmit={handleSubmitRating}
       />
     </div>
+  );
+}
+
+import { Suspense } from 'react';
+
+function MessagesFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="text-center">
+        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
+        <p className="mt-4 text-gray-600 text-sm">در حال بارگذاری...</p>
+      </div>
+    </div>
+  );
+}
+
+export default function MessagesPage() {
+  return (
+    <Suspense fallback={<MessagesFallback />}>
+      <MessagesContent />
+    </Suspense>
   );
 }

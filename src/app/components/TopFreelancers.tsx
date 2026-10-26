@@ -26,9 +26,21 @@ const EXPERIENCE_CONFIG: Record<string, { label: string; color: string }> = {
 };
 
 const RANK_STYLES = [
-  { ring: "ring-amber-400", avatar: "from-amber-400 to-orange-500", medal: "🥇" },
-  { ring: "ring-slate-400", avatar: "from-slate-400 to-slate-600", medal: "🥈" },
-  { ring: "ring-orange-400", avatar: "from-orange-400 to-red-500", medal: "🥉" },
+  {
+    ring: "ring-amber-400",
+    avatar: "from-amber-400 to-orange-500",
+    medal: "🥇",
+  },
+  {
+    ring: "ring-slate-400",
+    avatar: "from-slate-400 to-slate-600",
+    medal: "🥈",
+  },
+  {
+    ring: "ring-orange-400",
+    avatar: "from-orange-400 to-red-500",
+    medal: "🥉",
+  },
 ];
 
 export default function TopFreelancers() {
@@ -96,7 +108,9 @@ export default function TopFreelancers() {
               ))
             : users.map((u, index) => {
                 const rank = index < 3 ? RANK_STYLES[index] : null;
-                const exp = u.experience ? EXPERIENCE_CONFIG[u.experience] : null;
+                const exp = u.experience
+                  ? EXPERIENCE_CONFIG[u.experience]
+                  : null;
                 const rating = Number(u.rating || 0);
                 const rounded = Math.round(rating);
 
@@ -170,7 +184,7 @@ export default function TopFreelancers() {
         </div>
       </div>
 
-      <style jsx>{`
+      <style>{`
         .hide-scrollbar::-webkit-scrollbar {
           display: none;
         }

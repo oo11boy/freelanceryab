@@ -74,6 +74,7 @@ export const profileAPI = {
 // -------------------------------------------------
 // API آگهی‌ها
 // -------------------------------------------------
+// app/services/api.ts — بخش postsAPI (بقیه فایل دست نخورده)
 export const postsAPI = {
   getPosts: (params?: {
     category?: string;
@@ -83,11 +84,11 @@ export const postsAPI = {
     limit?: number;
   }) => {
     const query = new URLSearchParams();
-    if (params?.category) query.append('category', params.category);
-    if (params?.search) query.append('search', params.search);
-    if (params?.sort) query.append('sort', params.sort);
-    if (params?.page) query.append('page', params.page.toString());
-    if (params?.limit) query.append('limit', params.limit.toString());
+    if (params?.category) query.append("category", params.category);
+    if (params?.search) query.append("search", params.search);
+    if (params?.sort) query.append("sort", params.sort);
+    if (params?.page) query.append("page", params.page.toString());
+    if (params?.limit) query.append("limit", params.limit.toString());
     return fetch(`${API_BASE}/posts?${query.toString()}`, {
       headers: getHeaders(),
     }).then(handleResponse);
@@ -100,22 +101,29 @@ export const postsAPI = {
 
   createPost: (data: any) =>
     fetch(`${API_BASE}/posts`, {
-      method: 'POST',
+      method: "POST",
       headers: getHeaders(),
       body: JSON.stringify(data),
     }).then(handleResponse),
 
   updatePost: (id: number, data: any) =>
     fetch(`${API_BASE}/posts/${id}`, {
-      method: 'PUT',
+      method: "PUT",
       headers: getHeaders(),
       body: JSON.stringify(data),
     }).then(handleResponse),
 
   deletePost: (id: number) =>
     fetch(`${API_BASE}/posts/${id}`, {
-      method: 'DELETE',
+      method: "DELETE",
       headers: getHeaders(),
+    }).then(handleResponse),
+
+  lock: (postId: number, action: "lock" | "unlock") =>
+    fetch(`${API_BASE}/posts/${postId}/lock`, {
+      method: "POST",
+      headers: getHeaders(),
+      body: JSON.stringify({ action }),
     }).then(handleResponse),
 };
 

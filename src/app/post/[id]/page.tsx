@@ -1,10 +1,11 @@
 // app/post/[id]/page.tsx
-'use client';
-import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { postsAPI, savedAPI, messagesAPI } from '@/app/services/api';
-import { useAuth } from '@/app/hooks/useAuth';
+"use client";
+import { useState, useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
+import { postsAPI, savedAPI, messagesAPI } from "@/app/services/api";
+import { useAuth } from "@/app/hooks/useAuth";
+import { categoryLabel, categoryIcon } from "@/app/constants/categories";
 
 interface Post {
   id: number;
@@ -27,13 +28,6 @@ interface Post {
 interface PostOwner {
   id: number;
   full_name: string;
-  avatar: string | null;
-  rating: number;
-  completed_projects: number;
-  joined_at: string | null;
-  bio: string | null;
-  skills: string[];
-  experience: string | null;
 }
 
 export default function PostDetailPage() {
@@ -45,7 +39,7 @@ export default function PostDetailPage() {
   const [loading, setLoading] = useState(true);
   const [isSaved, setIsSaved] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [savedLoading, setSavedLoading] = useState(false);
 
@@ -61,7 +55,7 @@ export default function PostDetailPage() {
       setPost(data.post);
       setOwner(data.owner || null);
     } catch (error) {
-      console.error('خطا در دریافت آگهی:', error);
+      console.error("خطا در دریافت آگهی:", error);
     } finally {
       setLoading(false);
     }
@@ -73,13 +67,13 @@ export default function PostDetailPage() {
       const data = await savedAPI.getSaved();
       setIsSaved(data.posts.some((p: any) => p.id === Number(params.id)));
     } catch (error) {
-      console.error('خطا در بررسی ذخیره شده:', error);
+      console.error("خطا در بررسی ذخیره شده:", error);
     }
   };
 
   const handleSave = async () => {
     if (!token) {
-      router.push('/login');
+      router.push("/login");
       return;
     }
     if (savedLoading) return;
@@ -93,7 +87,7 @@ export default function PostDetailPage() {
         setIsSaved(true);
       }
     } catch (error) {
-      console.error('خطا:', error);
+      console.error("خطا:", error);
     } finally {
       setSavedLoading(false);
     }
@@ -101,11 +95,11 @@ export default function PostDetailPage() {
 
   const handleSendMessage = async () => {
     if (!token) {
-      router.push('/login');
+      router.push("/login");
       return;
     }
     if (!message.trim()) {
-      alert('لطفاً پیام خود را بنویسید');
+      alert("لطفاً پیام خود را بنویسید");
       return;
     }
 
@@ -113,10 +107,10 @@ export default function PostDetailPage() {
     try {
       await messagesAPI.sendMessage(post!.user_id, message, post!.id);
       setShowContactModal(false);
-      setMessage('');
-      router.push('/messages');
+      setMessage("");
+      router.push(`/messages?user=${post!.user_id}&post=${post!.id}`);
     } catch (error) {
-      alert('خطا در ارسال پیام');
+      alert("خطا در ارسال پیام");
     } finally {
       setSending(false);
     }
@@ -126,7 +120,7 @@ export default function PostDetailPage() {
     try {
       const diff = Date.now() - new Date(date).getTime();
       const hours = Math.floor(diff / (1000 * 60 * 60));
-      if (hours < 1) return 'لحظاتی پیش';
+      if (hours < 1) return "لحظاتی پیش";
       if (hours < 24) return `${hours} ساعت پیش`;
       const days = Math.floor(hours / 24);
       if (days < 30) return `${days} روز پیش`;
@@ -134,65 +128,43 @@ export default function PostDetailPage() {
       if (months < 12) return `${months} ماه پیش`;
       return `${Math.floor(months / 12)} سال پیش`;
     } catch {
-      return '';
+      return "";
     }
   };
 
   const formatDeadline = (date: string) => {
     try {
-      return new Date(date).toLocaleDateString('fa-IR', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
+      return new Date(date).toLocaleDateString("fa-IR", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
       });
     } catch {
-      return '';
+      return "";
     }
   };
 
   const getDeadlineStatus = (date: string) => {
     try {
       const days = Math.ceil(
-        (new Date(date).getTime() - Date.now()) / 86400000
+        (new Date(date).getTime() - Date.now()) / 86400000,
       );
       if (days > 0) {
         return {
           label: `${days} روز باقی‌مانده`,
-          color: 'text-green-600',
+          color: "text-green-600",
         };
       }
       if (days === 0) {
-        return { label: 'امروز آخرین مهلت است', color: 'text-amber-600' };
+        return { label: "امروز آخرین مهلت است", color: "text-amber-600" };
       }
-      return { label: 'مهلت به پایان رسیده', color: 'text-red-500' };
+      return { label: "مهلت به پایان رسیده", color: "text-red-500" };
     } catch {
-      return { label: '', color: 'text-gray-500' };
+      return { label: "", color: "text-gray-500" };
     }
   };
 
-  const experienceLabel: Record<string, string> = {
-    beginner: 'تازه‌کار',
-    intermediate: 'متوسط',
-    advanced: 'پیشرفته',
-    expert: 'حرفه‌ای',
-  };
-
-  const memberSince = (date: string | null) => {
-    if (!date) return '';
-    try {
-      return new Date(date).toLocaleDateString('fa-IR', {
-        year: 'numeric',
-        month: 'long',
-      });
-    } catch {
-      return '';
-    }
-  };
-
-  // -------------------------------------------------
-  // Loading skeleton
-  // -------------------------------------------------
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 pb-24">
@@ -237,17 +209,19 @@ export default function PostDetailPage() {
   }
 
   const isOwner = user?.id === post.user_id;
+  const ownerName = owner?.full_name || "کاربر فریلنسرکار";
   const priceLabel =
-    post.price_type === 'contact' ? 'توافقی' : `${post.price} تومان`;
+    post.price_type === "contact" ? "توافقی" : `${post.price} تومان`;
   const priceTypeLabel =
-    post.price_type === 'fixed'
-      ? 'مبلغ ثابت'
-      : post.price_type === 'hourly'
-      ? 'ساعتی'
-      : '';
+    post.price_type === "fixed"
+      ? "مبلغ ثابت"
+      : post.price_type === "hourly"
+        ? "ساعتی"
+        : "";
   const deadlineStatus = post.deadline
     ? getDeadlineStatus(post.deadline)
     : null;
+  const displayCategory = categoryLabel(post.category);
 
   return (
     <div className="min-h-screen bg-gray-50 pb-28">
@@ -280,17 +254,17 @@ export default function PostDetailPage() {
             onClick={handleSave}
             disabled={savedLoading}
             className={`w-10 h-10 rounded-full flex items-center justify-center transition-all active:scale-90 ${
-              isSaved ? 'bg-red-50' : 'hover:bg-gray-100'
+              isSaved ? "bg-red-50" : "hover:bg-gray-100"
             }`}
-            aria-label={isSaved ? 'حذف از ذخیره‌ها' : 'ذخیره آگهی'}
+            aria-label={isSaved ? "حذف از ذخیره‌ها" : "ذخیره آگهی"}
           >
             <svg
               className={`w-6 h-6 transition-all ${
                 isSaved
-                  ? 'text-red-500 fill-red-500 scale-110'
-                  : 'text-gray-700'
+                  ? "text-red-500 fill-red-500 scale-110"
+                  : "text-gray-700"
               }`}
-              fill={isSaved ? 'currentColor' : 'none'}
+              fill={isSaved ? "currentColor" : "none"}
               stroke="currentColor"
               viewBox="0 0 24 24"
             >
@@ -320,7 +294,7 @@ export default function PostDetailPage() {
                   alt={`تصویر ${idx + 1}`}
                   className="w-full h-full object-cover absolute inset-0"
                   onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = 'none';
+                    (e.target as HTMLImageElement).style.display = "none";
                   }}
                 />
                 <span className="text-3xl">🖼️</span>
@@ -331,37 +305,53 @@ export default function PostDetailPage() {
       )}
 
       <div className="p-4 space-y-4">
-        {/* کارت اصلی: عنوان + قیمت */}
+        {/* کارت اصلی */}
         <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+          <Link
+            href={`/explore?category=${encodeURIComponent(post.category)}`}
+            className="inline-flex items-center gap-1.5 bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-medium mb-3 hover:bg-blue-100 transition-colors"
+          >
+            <span>{categoryIcon(post.category)}</span>
+            {displayCategory}
+            {post.sub_category && (
+              <>
+                <span className="text-blue-400">•</span>
+                <span>{post.sub_category}</span>
+              </>
+            )}
+          </Link>
+
           <div className="flex items-start justify-between gap-3 mb-4">
             <h1 className="text-lg font-bold text-gray-800 leading-relaxed flex-1">
               {post.title}
             </h1>
-            {post.status === 'active' && (
-              <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-green-50 text-green-700 shrink-0">
-                ● فعال
+            {post.status === "active" && (
+              <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-green-50 text-green-700 shrink-0 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                فعال
+              </span>
+            )}
+            {post.status === "locked" && (
+              <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-purple-50 text-purple-700 shrink-0">
+                🔒 قفل شده
               </span>
             )}
           </div>
 
-          <div className="flex items-end justify-between">
+          <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-xl p-3.5 border border-emerald-100 flex items-center justify-between">
             <div>
-              <div className="text-xs text-gray-500 mb-1">قیمت</div>
-              <div
-                className="text-2xl font-bold text-green-700"
-                dir="ltr"
-              >
+              <div className="text-[10px] text-emerald-700 mb-0.5">قیمت</div>
+              <div className="text-xl font-bold text-emerald-700" dir="ltr">
                 {priceLabel}
               </div>
             </div>
             {priceTypeLabel && (
-              <span className="text-xs bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full">
+              <span className="text-[10px] bg-white text-emerald-700 px-2.5 py-1 rounded-full font-medium border border-emerald-200">
                 {priceTypeLabel}
               </span>
             )}
           </div>
 
-          {/* زمان و بازدید */}
           <div className="flex items-center gap-4 mt-4 pt-4 border-t border-gray-100 text-xs text-gray-500">
             <span className="flex items-center gap-1">
               <svg
@@ -401,44 +391,34 @@ export default function PostDetailPage() {
               </svg>
               {post.views} بازدید
             </span>
+            {post.location && (
+              <span className="flex items-center gap-1">
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                  />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                  />
+                </svg>
+                {post.location}
+              </span>
+            )}
           </div>
         </div>
 
-        {/* اطلاعات سریع */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-          <div className="grid grid-cols-2 gap-3">
-            {[
-              { icon: '📂', label: 'دسته‌بندی', value: post.category },
-              {
-                icon: '🔖',
-                label: 'زیردسته',
-                value: post.sub_category || '—',
-              },
-              {
-                icon: '📍',
-                label: 'موقعیت',
-                value: post.location || 'آنلاین',
-              },
-              {
-                icon: '👁️',
-                label: 'بازدید',
-                value: String(post.views),
-              },
-            ].map((item, i) => (
-              <div key={i} className="bg-gray-50 rounded-xl p-3">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <span className="text-sm">{item.icon}</span>
-                  <span className="text-xs text-gray-500">{item.label}</span>
-                </div>
-                <div className="font-semibold text-gray-800 text-sm truncate">
-                  {item.value}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* مهلت انجام */}
+        {/* مهلت */}
         {post.deadline && (
           <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
             <div className="flex items-center gap-3">
@@ -491,56 +471,41 @@ export default function PostDetailPage() {
           </div>
         )}
 
-        {/* اطلاعات آگهی‌دهنده */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-          <h2 className="font-bold mb-4 text-gray-800 flex items-center gap-2">
-            <span>👤</span> آگهی‌دهنده
-          </h2>
-
-          <div className="flex items-center gap-3 mb-3">
-            <div className="relative shrink-0">
-              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center text-2xl text-white font-bold shadow-md">
-                {owner?.full_name?.charAt(0) || '👤'}
-              </div>
-              <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-white" />
+        {/* آگهی‌دهنده */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-lg text-white font-bold shadow-md shrink-0">
+              {ownerName.charAt(0)}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="font-bold text-gray-800 text-base truncate">
-                {owner?.full_name || 'کاربر فریلنسرکار'}
-              </div>
-              <div className="flex flex-wrap items-center gap-2 mt-1.5">
-        
-           
+              <div className="text-xs text-gray-500 mb-0.5">آگهی‌دهنده</div>
+              <div className="font-bold text-gray-800 text-sm truncate">
+                {ownerName}
               </div>
             </div>
-          </div>
-
-
-     
-
-
-          <Link
-            href={`/user/${owner?.id || post.user_id}`}
-            className="w-full flex items-center justify-center gap-2 border-2 border-blue-600 text-blue-600 py-2.5 rounded-xl font-semibold text-sm hover:bg-blue-50 transition-colors active:scale-[0.98]"
-          >
-            مشاهده پروفایل کامل
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+            <Link
+              href={`/user/${owner?.id || post.user_id}`}
+              className="w-9 h-9 rounded-full flex items-center justify-center bg-gray-50 hover:bg-blue-50 text-gray-500 hover:text-blue-600 active:scale-90 transition-all shrink-0"
+              aria-label="مشاهده پروفایل"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 19l-7-7 7-7"
-              />
-            </svg>
-          </Link>
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 19l-7-7 7-7"
+                />
+              </svg>
+            </Link>
+          </div>
         </div>
 
-        {/* ⚠️ هشدار کلاهبرداری */}
+        {/* هشدار امنیتی */}
         <div className="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-200 rounded-2xl p-4 shadow-sm">
           <div className="flex items-start gap-3">
             <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-2xl shrink-0">
@@ -581,7 +546,6 @@ export default function PostDetailPage() {
           </div>
         </div>
 
-        {/* لینک قوانین */}
         <div className="text-center">
           <Link
             href="/rules"
@@ -593,25 +557,25 @@ export default function PostDetailPage() {
         </div>
       </div>
 
-      {/* دکمه اقدام ثابت */}
-      {!isOwner && (
-        <div className="fixed bottom-18 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-200 p-3 max-w-md mx-auto shadow-lg z-30 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+      {/* دکمه اقدام ثابت — فقط برای آگهی فعال */}
+      {!isOwner && post.status === "active" && (
+        <div className="fixed bottom-16 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-200 p-3 max-w-md mx-auto shadow-lg z-30 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
           <div className="flex gap-2">
             <button
               onClick={handleSave}
               disabled={savedLoading}
               className={`w-14 h-12 rounded-xl flex items-center justify-center transition-all active:scale-95 ${
                 isSaved
-                  ? 'bg-red-50 border-2 border-red-200'
-                  : 'bg-gray-100 border-2 border-gray-200'
+                  ? "bg-red-50 border-2 border-red-200"
+                  : "bg-gray-100 border-2 border-gray-200"
               }`}
-              aria-label={isSaved ? 'حذف از ذخیره‌ها' : 'ذخیره آگهی'}
+              aria-label={isSaved ? "حذف از ذخیره‌ها" : "ذخیره آگهی"}
             >
               <svg
                 className={`w-6 h-6 ${
-                  isSaved ? 'text-red-500' : 'text-gray-600'
+                  isSaved ? "text-red-500" : "text-gray-600"
                 }`}
-                fill={isSaved ? 'currentColor' : 'none'}
+                fill={isSaved ? "currentColor" : "none"}
                 stroke="currentColor"
                 viewBox="0 0 24 24"
               >
@@ -646,6 +610,49 @@ export default function PostDetailPage() {
         </div>
       )}
 
+      {/* پیام وضعیت برای آگهی غیرفعال */}
+      {!isOwner && post.status !== "active" && (
+        <div className="fixed bottom-16 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-200 p-3 max-w-md mx-auto shadow-lg z-30 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+          <div
+            className={`rounded-xl p-3 text-center border-2 ${
+              post.status === "locked"
+                ? "bg-purple-50 border-purple-200"
+                : post.status === "in_progress"
+                  ? "bg-amber-50 border-amber-200"
+                  : post.status === "delivered"
+                    ? "bg-orange-50 border-orange-200"
+                    : post.status === "completed"
+                      ? "bg-blue-50 border-blue-200"
+                      : "bg-gray-50 border-gray-200"
+            }`}
+          >
+            <p
+              className={`text-xs font-semibold flex items-center justify-center gap-1.5 ${
+                post.status === "locked"
+                  ? "text-purple-800"
+                  : post.status === "in_progress"
+                    ? "text-amber-800"
+                    : post.status === "delivered"
+                      ? "text-orange-800"
+                      : post.status === "completed"
+                        ? "text-blue-800"
+                        : "text-gray-600"
+              }`}
+            >
+              {post.status === "locked"
+                ? "🔒 این آگهی قفل شده و در حال انجامه — امکان ارسال درخواست جدید وجود ندارد"
+                : post.status === "in_progress"
+                  ? "🔄 این پروژه در حال انجامه — امکان ارسال درخواست جدید وجود ندارد"
+                  : post.status === "delivered"
+                    ? "📦 این پروژه تحویل داده شده و منتظر تأیید کارفرماست"
+                    : post.status === "completed"
+                      ? "✅ این پروژه تکمیل شده"
+                      : "🗑 این آگهی حذف شده"}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* مودال ارسال پیام */}
       {showContactModal && (
         <div
@@ -656,16 +663,15 @@ export default function PostDetailPage() {
             className="bg-white w-full max-w-md rounded-t-3xl p-5 animate-slide-up"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* هدر مودال */}
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <div className="w-11 h-11 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-lg text-white font-bold">
-                  {owner?.full_name?.charAt(0) || post.user_id}
+                  {ownerName.charAt(0)}
                 </div>
                 <div>
                   <div className="text-xs text-gray-500">ارسال پیام به</div>
                   <div className="font-bold text-gray-800 text-sm">
-                    {owner?.full_name || 'کاربر همیار'}
+                    {ownerName}
                   </div>
                 </div>
               </div>
@@ -690,7 +696,6 @@ export default function PostDetailPage() {
               </button>
             </div>
 
-            {/* اطلاعات آگهی */}
             <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 mb-4">
               <div className="text-xs text-blue-600 mb-0.5">
                 در پاسخ به آگهی
@@ -700,7 +705,6 @@ export default function PostDetailPage() {
               </div>
             </div>
 
-            {/* ورودی */}
             <textarea
               value={message}
               onChange={(e) => setMessage(e.target.value)}
@@ -716,7 +720,6 @@ export default function PostDetailPage() {
               </span>
             </div>
 
-            {/* دکمه‌ها */}
             <div className="flex gap-2">
               <button
                 onClick={() => setShowContactModal(false)}
@@ -753,7 +756,7 @@ export default function PostDetailPage() {
         </div>
       )}
 
-      <style jsx>{`
+      <style>{`
         @keyframes slide-up {
           from {
             transform: translateY(100%);

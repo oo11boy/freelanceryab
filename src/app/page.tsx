@@ -58,7 +58,7 @@ export default function HomePage() {
   return (
     <div className="pb-2 min-h-screen bg-gray-50">
       {/* هدر */}
-      <Header  />
+      <Header />
 
       {/* هیرو کارت */}
       <div className="px-4 pt-4">
@@ -298,7 +298,8 @@ export default function HomePage() {
         )}
       </div>
 
-      <style jsx>{`
+      {/* 🔑 استایل معمولی (بدون jsx) برای hide-scrollbar */}
+      <style>{`
         .hide-scrollbar::-webkit-scrollbar {
           display: none;
         }

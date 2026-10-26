@@ -1,27 +1,27 @@
 // app/profile/edit/page.tsx
-'use client';
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/app/hooks/useAuth';
-import { profileAPI } from '@/app/services/api';
+"use client";
+import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/app/hooks/useAuth";
+import { useUILayout } from "@/app/hooks/useUILayout";
+import { profileAPI } from "@/app/services/api";
 
 const EXPERIENCE_OPTIONS = [
-  { value: '', label: 'انتخاب کنید' },
-  { value: 'beginner', label: 'مبتدی' },
-  { value: 'intermediate', label: 'متوسط' },
-  { value: 'advanced', label: 'پیشرفته' },
-  { value: 'expert', label: 'حرفه‌ای' },
+  { value: "", label: "انتخاب کنید", icon: "—" },
+  { value: "beginner", label: "مبتدی", icon: "🌱" },
+  { value: "intermediate", label: "متوسط", icon: "⚡" },
+  { value: "advanced", label: "پیشرفته", icon: "🔥" },
+  { value: "expert", label: "حرفه‌ای", icon: "👑" },
 ];
 
-// ✅ تابع کمکی برای تبدیل امن skills به آرایه
 function parseSkills(input: any): string[] {
   if (!input) return [];
-  if (Array.isArray(input)) return input.filter((s) => typeof s === 'string');
-  if (typeof input === 'string') {
+  if (Array.isArray(input)) return input.filter((s) => typeof s === "string");
+  if (typeof input === "string") {
     try {
       const parsed = JSON.parse(input);
       if (Array.isArray(parsed)) {
-        return parsed.filter((s) => typeof s === 'string');
+        return parsed.filter((s) => typeof s === "string");
       }
       return [];
     } catch {
@@ -34,6 +34,9 @@ function parseSkills(input: any): string[] {
 export default function EditProfilePage() {
   const router = useRouter();
   const { user, token, updateUser } = useAuth();
+  const { setHideBottomNav } = useUILayout();
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  const skillInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState<{
     full_name: string;
@@ -42,31 +45,37 @@ export default function EditProfilePage() {
     bio: string;
     skills: string[];
   }>({
-    full_name: '',
-    email: '',
-    experience: '',
-    bio: '',
+    full_name: "",
+    email: "",
+    experience: "",
+    bio: "",
     skills: [],
   });
-  const [skillInput, setSkillInput] = useState('');
+  const [skillInput, setSkillInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [isDirty, setIsDirty] = useState(false);
 
-  // بارگذاری اطلاعات فعلی
+  // 🔑 پنهان کردن BottomNav در این صفحه
+  useEffect(() => {
+    setHideBottomNav(true);
+    return () => setHideBottomNav(false);
+  }, [setHideBottomNav]);
+
   useEffect(() => {
     if (!token) {
-      router.push('/login');
+      router.push("/login");
       return;
     }
 
     if (user) {
       setFormData({
-        full_name: user.full_name || '',
-        email: user.email || '',
-        experience: user.experience || '',
-        bio: user.bio || '',
-        skills: parseSkills(user.skills), // ✅ استفاده از تابع امن
+        full_name: user.full_name || "",
+        email: user.email || "",
+        experience: user.experience || "",
+        bio: user.bio || "",
+        skills: parseSkills(user.skills),
       });
     }
   }, [user, token, router]);
@@ -74,18 +83,18 @@ export default function EditProfilePage() {
   const handleChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >
+    >,
   ) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
-    setError('');
-    setSuccess('');
+    setError("");
+    setSuccess("");
+    setIsDirty(true);
   };
 
   const handleSkillAdd = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && skillInput.trim()) {
+    if (e.key === "Enter" && skillInput.trim()) {
       e.preventDefault();
       const skill = skillInput.trim();
-      // ✅ اطمینان از آرایه بودن
       const currentSkills = Array.isArray(formData.skills)
         ? formData.skills
         : [];
@@ -94,42 +103,58 @@ export default function EditProfilePage() {
           ...formData,
           skills: [...currentSkills, skill],
         });
+        setIsDirty(true);
       }
-      setSkillInput('');
+      setSkillInput("");
+    }
+  };
+
+  const handleAddSkillClick = () => {
+    if (skillInput.trim()) {
+      const skill = skillInput.trim();
+      const currentSkills = Array.isArray(formData.skills)
+        ? formData.skills
+        : [];
+      if (!currentSkills.includes(skill) && currentSkills.length < 20) {
+        setFormData({
+          ...formData,
+          skills: [...currentSkills, skill],
+        });
+        setIsDirty(true);
+      }
+      setSkillInput("");
+      skillInputRef.current?.focus();
     }
   };
 
   const handleRemoveSkill = (skill: string) => {
-    const currentSkills = Array.isArray(formData.skills)
-      ? formData.skills
-      : [];
+    const currentSkills = Array.isArray(formData.skills) ? formData.skills : [];
     setFormData({
       ...formData,
       skills: currentSkills.filter((s) => s !== skill),
     });
+    setIsDirty(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    setSuccess('');
+    setError("");
+    setSuccess("");
 
-    // اعتبارسنجی
     if (!formData.full_name.trim()) {
-      setError('نام کامل الزامی است');
+      setError("نام کامل الزامی است");
+      nameInputRef.current?.focus();
       return;
     }
 
     if (formData.full_name.trim().length < 3) {
-      setError('نام کامل باید حداقل ۳ کاراکتر باشد');
+      setError("نام کامل باید حداقل ۳ کاراکتر باشد");
+      nameInputRef.current?.focus();
       return;
     }
 
-    if (
-      formData.email &&
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)
-    ) {
-      setError('ایمیل معتبر وارد کنید');
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      setError("ایمیل معتبر وارد کنید");
       return;
     }
 
@@ -146,57 +171,122 @@ export default function EditProfilePage() {
 
       if (data.success && data.user) {
         updateUser(data.user);
-        setSuccess('پروفایل با موفقیت به‌روزرسانی شد');
+        setSuccess("پروفایل با موفقیت به‌روزرسانی شد ✓");
+        setIsDirty(false);
         setTimeout(() => {
-          router.push('/profile');
+          router.push("/profile");
         }, 1000);
       }
     } catch (err: any) {
-      setError(err.message || 'خطا در ذخیره اطلاعات');
+      setError(err.message || "خطا در ذخیره اطلاعات");
     } finally {
       setLoading(false);
     }
   };
 
+  const handleBack = () => {
+    if (isDirty && !success) {
+      if (!confirm("تغییرات ذخیره نشده. آیا خارج می‌شوید؟")) return;
+    }
+    router.back();
+  };
+
   if (!token) return null;
 
-  // ✅ اطمینان نهایی قبل از رندر
   const safeSkills = Array.isArray(formData.skills) ? formData.skills : [];
+  const currentExp = EXPERIENCE_OPTIONS.find(
+    (o) => o.value === formData.experience,
+  );
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24">
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-blue-50/30 pb-24">
       {/* هدر */}
-      <div className="bg-white shadow-sm sticky top-0 z-10 px-4 py-3 flex items-center gap-3">
-        <button
-          onClick={() => router.back()}
-          className="text-gray-600 text-2xl"
-        >
-          ←
-        </button>
-        <h1 className="text-lg font-bold flex-1 text-center">ویرایش پروفایل</h1>
+      <div className="bg-white/95 backdrop-blur-md border-b border-gray-200 shadow-sm sticky top-0 z-20">
+        <div className="flex items-center gap-2 px-4 py-3">
+          <button
+            onClick={handleBack}
+            className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-100 active:scale-95 transition-all"
+            aria-label="بازگشت"
+          >
+            <svg
+              className="w-6 h-6 text-gray-700"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 5l7 7-7 7"
+              />
+            </svg>
+          </button>
+          <div className="flex-1 text-center">
+            <h1 className="text-base font-bold text-gray-800">
+              ویرایش پروفایل
+            </h1>
+            <p className="text-[10px] text-gray-500">
+              اطلاعات عمومی نمایش داده می‌شود
+            </p>
+          </div>
+          <div className="w-10" />
+        </div>
       </div>
 
       <form onSubmit={handleSubmit} className="p-4 space-y-4">
+        {/* کارت هدایت */}
+        <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-4 text-white shadow-lg shadow-blue-500/20">
+          <div className="flex items-start gap-3">
+            <div className="text-3xl">✨</div>
+            <div className="flex-1">
+              <h2 className="font-bold text-sm mb-1">
+                پروفایل خودت رو برجسته کن!
+              </h2>
+              <p className="text-xs opacity-90 leading-relaxed">
+                پروفایل کامل، شانس دیده شدن شما توسط کارفرماها رو چند برابر
+                می‌کنه
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* نام کامل */}
-        <div className="bg-white rounded-lg p-4">
-          <label className="block text-sm font-semibold mb-2">
-            نام و نام خانوادگی <span className="text-red-500">*</span>
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+          <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-3">
+            <span className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center text-sm">
+              👤
+            </span>
+            نام و نام خانوادگی
+            <span className="text-red-500">*</span>
           </label>
           <input
+            ref={nameInputRef}
             type="text"
             name="full_name"
             value={formData.full_name}
             onChange={handleChange}
             placeholder="مثال: علی محمدی"
-            className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white transition-all"
             maxLength={100}
           />
+          <div className="flex justify-end mt-1.5">
+            <span className="text-[10px] text-gray-400">
+              {formData.full_name.length}/100
+            </span>
+          </div>
         </div>
 
         {/* ایمیل */}
-        <div className="bg-white rounded-lg p-4">
-          <label className="block text-sm font-semibold mb-2">
-            ایمیل <span className="text-gray-400 text-xs">(اختیاری)</span>
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+          <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-3">
+            <span className="w-7 h-7 rounded-lg bg-purple-50 flex items-center justify-center text-sm">
+              ✉️
+            </span>
+            ایمیل
+            <span className="text-[10px] text-gray-400 font-normal">
+              (اختیاری)
+            </span>
           </label>
           <input
             type="email"
@@ -204,114 +294,263 @@ export default function EditProfilePage() {
             value={formData.email}
             onChange={handleChange}
             placeholder="example@email.com"
-            className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white transition-all"
             dir="ltr"
           />
+          <p className="text-[10px] text-gray-400 mt-1.5">
+            برای اطلاع‌رسانی پروژه‌ها و اعلان‌های مهم استفاده می‌شود
+          </p>
         </div>
 
         {/* سطح تجربه */}
-        <div className="bg-white rounded-lg p-4">
-          <label className="block text-sm font-semibold mb-2">سطح تجربه</label>
-          <select
-            name="experience"
-            value={formData.experience}
-            onChange={handleChange}
-            className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            {EXPERIENCE_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+          <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-3">
+            <span className="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center text-sm">
+              🏆
+            </span>
+            سطح تجربه
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            {EXPERIENCE_OPTIONS.filter((o) => o.value).map((opt) => {
+              const isActive = formData.experience === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => {
+                    setFormData({ ...formData, experience: opt.value });
+                    setIsDirty(true);
+                    setError("");
+                    setSuccess("");
+                  }}
+                  className={`p-3 rounded-xl border-2 text-center transition-all active:scale-95 flex items-center justify-center gap-1.5 ${
+                    isActive
+                      ? "border-amber-500 bg-amber-50 shadow-sm"
+                      : "border-gray-200 bg-white hover:border-gray-300"
+                  }`}
+                >
+                  <span className="text-lg">{opt.icon}</span>
+                  <span
+                    className={`text-xs font-semibold ${
+                      isActive ? "text-amber-700" : "text-gray-600"
+                    }`}
+                  >
+                    {opt.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          {currentExp && currentExp.value && (
+            <p className="text-[10px] text-amber-700 mt-2 flex items-center gap-1">
+              <span>💡</span>
+              سطح فعلی: {currentExp.label} — می‌توانید تغییر دهید
+            </p>
+          )}
         </div>
 
         {/* بیوگرافی */}
-        <div className="bg-white rounded-lg p-4">
-          <label className="block text-sm font-semibold mb-2">درباره من</label>
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+          <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-3">
+            <span className="w-7 h-7 rounded-lg bg-green-50 flex items-center justify-center text-sm">
+              📝
+            </span>
+            درباره من
+          </label>
           <textarea
             name="bio"
             value={formData.bio}
             onChange={handleChange}
             rows={4}
-            placeholder="کمی از خودتان و تخصص‌هایتان بنویسید..."
-            className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="کمی از خودتان، تخصص‌ها و تجربیات کاری‌تان بنویسید..."
+            className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white transition-all resize-none"
             maxLength={500}
           />
-          <p className="text-xs text-gray-400 mt-1">
-            {formData.bio.length}/500
-          </p>
+          <div className="flex justify-between mt-1.5">
+            <p className="text-[10px] text-gray-400">
+              پروفایل‌های کامل ۳ برابر بیشتر دیده می‌شوند
+            </p>
+            <span
+              className={`text-[10px] ${
+                formData.bio.length > 450
+                  ? "text-amber-600 font-medium"
+                  : "text-gray-400"
+              }`}
+            >
+              {formData.bio.length}/500
+            </span>
+          </div>
         </div>
 
         {/* مهارت‌ها */}
-        <div className="bg-white rounded-lg p-4">
-          <label className="block text-sm font-semibold mb-2">مهارت‌ها</label>
-          <input
-            type="text"
-            value={skillInput}
-            onChange={(e) => setSkillInput(e.target.value)}
-            onKeyDown={handleSkillAdd}
-            placeholder="تایپ کنید و Enter بزنید (مثال: React, Python)"
-            className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <div className="flex flex-wrap gap-2 mt-3">
-            {/* ✅ استفاده از safeSkills */}
-            {safeSkills.map((skill, idx) => (
-              <span
-                key={idx}
-                className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm flex items-center gap-2"
-              >
-                {skill}
-                <button
-                  type="button"
-                  onClick={() => handleRemoveSkill(skill)}
-                  className="hover:text-red-600"
-                >
-                  ✕
-                </button>
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+          <label className="flex items-center justify-between text-sm font-semibold text-gray-700 mb-3">
+            <div className="flex items-center gap-2">
+              <span className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center text-sm">
+                🎯
               </span>
-            ))}
+              مهارت‌ها
+            </div>
+            {safeSkills.length > 0 && (
+              <span className="text-[10px] bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full font-medium">
+                {safeSkills.length}/20
+              </span>
+            )}
+          </label>
+
+          <div className="flex gap-2">
+            <input
+              ref={skillInputRef}
+              type="text"
+              value={skillInput}
+              onChange={(e) => setSkillInput(e.target.value)}
+              onKeyDown={handleSkillAdd}
+              placeholder="مثلاً React یا Python"
+              className="flex-1 p-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white transition-all"
+              maxLength={30}
+            />
+            <button
+              type="button"
+              onClick={handleAddSkillClick}
+              disabled={!skillInput.trim() || safeSkills.length >= 20}
+              className="w-[54px] h-[54px] rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-blue-500/30 active:scale-95 transition-all shrink-0"
+              aria-label="افزودن مهارت"
+            >
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2.5}
+                  d="M12 4v16m8-8H4"
+                />
+              </svg>
+            </button>
           </div>
+
+          {safeSkills.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-3">
+              {safeSkills.map((skill, idx) => (
+                <span
+                  key={idx}
+                  className="bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 border border-blue-200 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-2 animate-fade-in"
+                >
+                  {skill}
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveSkill(skill)}
+                    className="w-5 h-5 rounded-full bg-blue-100 hover:bg-red-100 hover:text-red-600 flex items-center justify-center transition-colors"
+                    aria-label={`حذف ${skill}`}
+                  >
+                    <svg
+                      className="w-3 h-3"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={3}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+
           {safeSkills.length === 0 && (
-            <p className="text-xs text-gray-400 mt-2">
-              هنوز مهارتی اضافه نکرده‌اید
-            </p>
+            <div className="mt-3 text-center py-4 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+              <p className="text-xs text-gray-400">
+                هنوز مهارتی اضافه نکرده‌اید
+              </p>
+              <p className="text-[10px] text-gray-400 mt-0.5">
+                مهارت‌های بیشتر = شانس بیشتر برای دیده شدن
+              </p>
+            </div>
           )}
         </div>
 
         {/* پیام‌ها */}
         {error && (
-          <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm flex items-center gap-2">
-            <span>⚠️</span>
-            <span>{error}</span>
+          <div className="bg-red-50 border border-red-200 text-red-700 p-3.5 rounded-xl text-sm flex items-start gap-2 animate-fade-in">
+            <span className="text-lg shrink-0">⚠️</span>
+            <span className="leading-relaxed">{error}</span>
           </div>
         )}
 
         {success && (
-          <div className="bg-green-50 text-green-600 p-3 rounded-lg text-sm flex items-center gap-2">
-            <span>✓</span>
-            <span>{success}</span>
+          <div className="bg-green-50 border border-green-200 text-green-700 p-3.5 rounded-xl text-sm flex items-start gap-2 animate-fade-in">
+            <span className="text-lg shrink-0">✓</span>
+            <span className="leading-relaxed">{success}</span>
           </div>
         )}
+      </form>
 
-        {/* دکمه‌ها */}
-        <div className="flex gap-3 pt-2">
+      {/* 🔑 دکمه‌های ثابت پایین — z-50 برای اطمینان از بالا بودن */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-200 p-3 max-w-md mx-auto shadow-2xl z-50 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+        <div className="flex gap-2">
           <button
             type="button"
-            onClick={() => router.back()}
-            className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-semibold"
+            onClick={handleBack}
+            disabled={loading}
+            className="flex-1 bg-white border-2 border-gray-300 text-gray-700 py-3 rounded-xl font-semibold text-sm hover:bg-gray-50 transition-colors active:scale-[0.98] disabled:opacity-50"
           >
             انصراف
           </button>
           <button
-            type="submit"
+            onClick={handleSubmit}
             disabled={loading}
-            className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold disabled:bg-blue-400"
+            className="flex-[2] bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 rounded-xl font-semibold text-sm shadow-lg shadow-blue-500/30 hover:shadow-xl transition-all active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-2"
           >
-            {loading ? 'در حال ذخیره...' : 'ذخیره تغییرات'}
+            {loading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                در حال ذخیره...
+              </>
+            ) : (
+              <>
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2.5}
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+                ذخیره تغییرات
+              </>
+            )}
           </button>
         </div>
-      </form>
+      </div>
+
+      <style>{`
+        @keyframes fade-in {
+          from {
+            opacity: 0;
+            transform: translateY(8px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        .animate-fade-in {
+          animation: fade-in 0.3s ease-out;
+        }
+      `}</style>
     </div>
   );
 }

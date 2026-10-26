@@ -1,7 +1,7 @@
 // app/components/ContractBar.tsx
 "use client";
 import { useState } from "react";
-import { contractsAPI } from "@/app/services/api";
+import { contractsAPI, postsAPI } from "@/app/services/api";
 
 interface Contract {
   id: number;
@@ -17,6 +17,7 @@ interface Props {
   onRate: () => void;
   hasRated: boolean;
   otherReview: any;
+  postStatus?: string | null;
 }
 
 type ActionType = "start" | "deliver" | "confirm" | "cancel";
@@ -26,7 +27,7 @@ interface ConfirmState {
   title: string;
   message: string;
   confirmText: string;
-  confirmColor: "blue" | "green" | "red" | "emerald";
+  confirmColor: "blue" | "green" | "red" | "emerald" | "purple";
   icon: string;
 }
 
@@ -39,8 +40,11 @@ export default function ContractBar({
   onRate,
   hasRated,
   otherReview,
+  postStatus,
 }: Props) {
   const [busy, setBusy] = useState(false);
+  const [lockingPost, setLockingPost] = useState(false);
+  const [unlockingPost, setUnlockingPost] = useState(false);
   const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
 
   const runAction = async (action: ActionType) => {
@@ -61,6 +65,32 @@ export default function ContractBar({
     }
   };
 
+  const handleLockPost = async () => {
+    if (lockingPost) return;
+    setLockingPost(true);
+    try {
+      await postsAPI.lock(postId, "lock");
+      onRefresh();
+    } catch (e: any) {
+      alert(e.message || "خطا در قفل کردن");
+    } finally {
+      setLockingPost(false);
+    }
+  };
+
+  const handleUnlockPost = async () => {
+    if (unlockingPost) return;
+    setUnlockingPost(true);
+    try {
+      await postsAPI.lock(postId, "unlock");
+      onRefresh();
+    } catch (e: any) {
+      alert(e.message || "خطا در باز کردن قفل");
+    } finally {
+      setUnlockingPost(false);
+    }
+  };
+
   const openConfirm = (state: ConfirmState) => setConfirmState(state);
 
   const confirmColorMap = {
@@ -68,6 +98,7 @@ export default function ContractBar({
     green: "from-green-600 to-emerald-600 shadow-green-500/30",
     red: "from-red-500 to-rose-600 shadow-red-500/30",
     emerald: "from-emerald-600 to-teal-600 shadow-emerald-500/30",
+    purple: "from-purple-600 to-indigo-600 shadow-purple-500/30",
   };
 
   const renderConfirmModal = () => {
@@ -79,7 +110,7 @@ export default function ContractBar({
         onClick={() => !busy && setConfirmState(null)}
       >
         <div
-          className="bg-white w-full max-w-sm rounded-3xl p-6 animate-zoom-in"
+          className="bg-white w-full max-w-sm rounded-3xl p-6 animate-scale-in"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="text-center mb-5">
@@ -119,9 +150,9 @@ export default function ContractBar({
     );
   };
 
-  // =================================================
+  // =========================================
   // حالت ۱: قراردادی وجود نداره
-  // =================================================
+  // =========================================
   if (!contract) {
     if (role === null) return null;
 
@@ -195,12 +226,13 @@ export default function ContractBar({
     );
   }
 
-  // =================================================
+  // =========================================
   // حالت ۲: در حال انجام
-  // =================================================
+  // =========================================
   if (contract.status === "in_progress") {
     const isFreelancer = role === "freelancer";
     const isClient = role === "client";
+    const isLocked = postStatus === "locked";
 
     return (
       <div
@@ -234,12 +266,81 @@ export default function ContractBar({
               }`}
             >
               {isFreelancer
-                ? "وقتی کار تموم شد، روی «تحویل پروژه» بزن تا کارفرما تأیید کنه"
-                : "منتظر تحویل کار از فریلنسر هستی. بعد از تحویل، می‌تونی تأیید کنی"}
+                ? isLocked
+                  ? "کارفرما پروژه رو قفل کرده — آگهی از لیست عمومی حذف شده. کار رو انجام بده و تحویل بده."
+                  : "وقتی کار تموم شد، روی «تحویل پروژه» بزن تا کارفرما تأیید کنه."
+                : isLocked
+                ? "آگهی از لیست عمومی حذف شده — کسی نمی‌تونه درخواست جدید بده. منتظر تحویل کار از فریلنسر هستی"
+                : "منتظر تحویل کار از فریلنسر هستی. می‌تونی آگهی رو قفل کنی تا بقیه درخواست ندن"}
             </p>
           </div>
         </div>
-        <div className="flex gap-2 mt-3">
+
+        {/* ============================================
+            بج وضعیت قفل — برای هر دو طرف
+        ============================================ */}
+        {isLocked ? (
+          <div className="mt-2.5 bg-gradient-to-r from-purple-100 to-indigo-100 border border-purple-200 rounded-xl px-3 py-2 flex items-center gap-2">
+            <span className="text-lg shrink-0">🔒</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-bold text-purple-900">
+                آگهی قفل شده — از دید عموم مخفی
+              </p>
+              <p className="text-[9px] text-purple-700 leading-relaxed">
+                {isFreelancer
+                  ? "کارفرما آگهی رو قفل کرده. کارت رو با خیال راحت انجام بده."
+                  : "این آگهی از لیست عمومی حذف شده و دیگران نمی‌تونن درخواست بدن."}
+              </p>
+            </div>
+          </div>
+        ) : (
+          /* ============================================
+             راهنمای قفل — مخصوص فریلنسر
+          ============================================ */
+          isFreelancer && (
+            <div className="mt-2.5 bg-gradient-to-br from-blue-50 to-purple-50 border border-blue-200 rounded-xl p-3">
+              <div className="flex items-start gap-2 mb-2">
+                <span className="text-lg shrink-0">💡</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] font-bold text-blue-900 mb-0.5">
+                    می‌خوای پروژه از دید عموم خارج بشه؟
+                  </p>
+                  <p className="text-[9px] text-blue-700 leading-relaxed">
+                    از کارفرما بخواه پروژه رو «قفل» کنه. با این کار:
+                  </p>
+                </div>
+              </div>
+              <ul className="space-y-1 mr-7">
+                <li className="flex items-start gap-1.5">
+                  <span className="text-purple-500 shrink-0 text-[10px] mt-0.5">
+                    ✓
+                  </span>
+                  <span className="text-[9px] text-purple-800 leading-relaxed">
+                    آگهی از لیست جستجو و صفحه اصلی حذف می‌شه
+                  </span>
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <span className="text-purple-500 shrink-0 text-[10px] mt-0.5">
+                    ✓
+                  </span>
+                  <span className="text-[9px] text-purple-800 leading-relaxed">
+                    بقیه فریلنسرها نمی‌تونن درخواست جدید بدن
+                  </span>
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <span className="text-purple-500 shrink-0 text-[10px] mt-0.5">
+                    ✓
+                  </span>
+                  <span className="text-[9px] text-purple-800 leading-relaxed">
+                    حق انتخاب انحصاری روی این پروژه به تو داده می‌شه
+                  </span>
+                </li>
+              </ul>
+            </div>
+          )
+        )}
+
+        <div className="flex flex-wrap gap-2 mt-3">
           {isFreelancer && (
             <button
               onClick={() =>
@@ -272,50 +373,154 @@ export default function ContractBar({
               تحویل پروژه
             </button>
           )}
+
           {isClient && (
-            <button
-              onClick={() =>
-                openConfirm({
-                  action: "cancel",
-                  title: "لغو قرارداد؟",
-                  message:
-                    "با لغو قرارداد، پروژه بسته می‌شه و امکان امتیازدهی وجود نخواهد داشت. آیا مطمئنی؟",
-                  confirmText: "بله، لغو کن",
-                  confirmColor: "red",
-                  icon: "🚫",
-                })
-              }
-              disabled={busy}
-              className="flex-1 bg-white border-2 border-red-200 text-red-600 py-2.5 rounded-xl text-xs font-semibold hover:bg-red-50 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
-            >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+            <>
+              {!isLocked ? (
+                <button
+                  onClick={handleLockPost}
+                  disabled={lockingPost}
+                  className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-2.5 rounded-xl text-xs font-bold shadow-md shadow-purple-500/30 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
+                >
+                  {lockingPost ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      در حال قفل...
+                    </>
+                  ) : (
+                    <>
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                        />
+                      </svg>
+                      قفل پروژه
+                    </>
+                  )}
+                </button>
+              ) : (
+                <button
+                  onClick={handleUnlockPost}
+                  disabled={unlockingPost}
+                  className="flex-1 bg-white border-2 border-purple-300 text-purple-700 py-2.5 rounded-xl text-xs font-bold active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
+                >
+                  {unlockingPost ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+                      در حال باز کردن...
+                    </>
+                  ) : (
+                    <>
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"
+                        />
+                      </svg>
+                      باز کردن قفل
+                    </>
+                  )}
+                </button>
+              )}
+              <button
+                onClick={() =>
+                  openConfirm({
+                    action: "cancel",
+                    title: "لغو قرارداد؟",
+                    message:
+                      "با لغو قرارداد، پروژه بسته می‌شه، آگهی دوباره فعال می‌شه و امکان امتیازدهی وجود نخواهد داشت. آیا مطمئنی؟",
+                    confirmText: "بله، لغو کن",
+                    confirmColor: "red",
+                    icon: "🚫",
+                  })
+                }
+                disabled={busy}
+                className="bg-white border-2 border-red-200 text-red-600 px-3 py-2.5 rounded-xl text-xs font-semibold hover:bg-red-50 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-              لغو قرارداد
-            </button>
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+                لغو
+              </button>
+            </>
           )}
         </div>
+
+        {/* راهنمای قفل برای کارفرما — فقط وقتی قفل نیست */}
+        {isClient && !isLocked && (
+          <div className="mt-2.5 bg-gradient-to-br from-blue-50 to-purple-50 border border-blue-200 rounded-xl p-3">
+            <div className="flex items-start gap-2">
+              <span className="text-lg shrink-0">💡</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-bold text-blue-900 mb-1">
+                  چرا پروژه رو قفل کنم؟
+                </p>
+                <ul className="space-y-1">
+                  <li className="flex items-start gap-1.5">
+                    <span className="text-purple-500 shrink-0 text-[10px] mt-0.5">
+                      ✓
+                    </span>
+                    <span className="text-[9px] text-purple-800 leading-relaxed">
+                      آگهی از لیست جستجو و صفحه اصلی حذف می‌شه
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-1.5">
+                    <span className="text-purple-500 shrink-0 text-[10px] mt-0.5">
+                      ✓
+                    </span>
+                    <span className="text-[9px] text-purple-800 leading-relaxed">
+                      فریلنسر مطمئن می‌شه که پروژه بهش تعلق داره
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-1.5">
+                    <span className="text-purple-500 shrink-0 text-[10px] mt-0.5">
+                      ✓
+                    </span>
+                    <span className="text-[9px] text-purple-800 leading-relaxed">
+                      از درخواست‌های بیشتر و سردرگمی جلوگیری می‌کنه
+                    </span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
+
         {renderConfirmModal()}
       </div>
     );
   }
 
-  // =================================================
-  // حالت ۳: تحویل داده شده - منتظر تأیید کارفرما
-  // =================================================
+  // =========================================
+  // حالت ۳: تحویل داده شده
+  // =========================================
   if (contract.status === "delivered") {
     const isClient = role === "client";
-
     return (
       <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-b-2 border-amber-300 px-4 py-3">
         <div className="flex items-start gap-3">
@@ -336,45 +541,64 @@ export default function ContractBar({
           </div>
         </div>
         {isClient && (
-          <button
-            onClick={() =>
-              openConfirm({
-                action: "confirm",
-                title: "کار رو تأیید می‌کنی؟",
-                message:
-                  "با تأیید شما، پروژه تکمیل می‌شه، به هر دو طرف یک «پروژه موفق» اضافه می‌شه و امکان امتیازدهی دوطرفه فعال می‌شه.",
-                confirmText: "بله، تأیید می‌کنم",
-                confirmColor: "emerald",
-                icon: "✅",
-              })
-            }
-            disabled={busy}
-            className="w-full mt-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white py-2.5 rounded-xl text-xs font-bold shadow-md shadow-emerald-500/30 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
-          >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+          <div className="flex gap-2 mt-3">
+            <button
+              onClick={() =>
+                openConfirm({
+                  action: "confirm",
+                  title: "کار رو تأیید می‌کنی؟",
+                  message:
+                    "با تأیید شما، پروژه تکمیل می‌شه، به هر دو طرف یک «پروژه موفق» اضافه می‌شه و امکان امتیازدهی دوطرفه فعال می‌شه.",
+                  confirmText: "بله، تأیید می‌کنم",
+                  confirmColor: "emerald",
+                  icon: "✅",
+                })
+              }
+              disabled={busy}
+              className="flex-[2] bg-gradient-to-r from-emerald-600 to-teal-600 text-white py-2.5 rounded-xl text-xs font-bold shadow-md shadow-emerald-500/30 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2.5}
-                d="M5 13l4 4L19 7"
-              />
-            </svg>
-            تأیید دریافت کار
-          </button>
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2.5}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+              تأیید دریافت کار
+            </button>
+            <button
+              onClick={() =>
+                openConfirm({
+                  action: "cancel",
+                  title: "لغو قرارداد؟",
+                  message:
+                    "با لغو، آگهی دوباره به لیست برمی‌گرده و می‌تونی فریلنسر دیگه‌ای انتخاب کنی",
+                  confirmText: "بله، لغو کن",
+                  confirmColor: "red",
+                  icon: "🚫",
+                })
+              }
+              disabled={busy}
+              className="flex-1 bg-white border-2 border-red-200 text-red-600 py-2.5 rounded-xl text-xs font-semibold active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-1"
+            >
+              لغو
+            </button>
+          </div>
         )}
         {renderConfirmModal()}
       </div>
     );
   }
 
-  // =================================================
+  // =========================================
   // حالت ۴: تکمیل شده
-  // =================================================
+  // =========================================
   if (contract.status === "completed") {
     return (
       <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-b-2 border-green-300 px-4 py-3">
@@ -396,7 +620,6 @@ export default function ContractBar({
           </div>
         </div>
 
-        {/* امتیاز طرف مقابل (اگه هست) */}
         {otherReview && hasRated && (
           <div className="bg-white/70 rounded-xl p-2.5 mb-2 flex items-center justify-between">
             <span className="text-[11px] text-green-800 font-medium">
@@ -444,9 +667,9 @@ export default function ContractBar({
     );
   }
 
-  // =================================================
+  // =========================================
   // حالت ۵: لغو شده
-  // =================================================
+  // =========================================
   if (contract.status === "cancelled") {
     return (
       <div className="bg-gray-50 border-b-2 border-gray-200 px-4 py-3">
@@ -459,8 +682,7 @@ export default function ContractBar({
               این قرارداد لغو شده
             </p>
             <p className="text-[11px] text-gray-500 leading-relaxed">
-              پروژه توسط کارفرما لغو شد. برای شروع دوباره با این فریلنسر،
-              می‌تونید از آگهی دوباره پیام بدید.
+              پروژه توسط کارفرما لغو شد. آگهی دوباره به لیست برگشته است.
             </p>
           </div>
         </div>

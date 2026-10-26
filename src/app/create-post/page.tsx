@@ -32,7 +32,7 @@ export default function CreatePostPage() {
   });
 
   const [deadlineDays, setDeadlineDays] = useState<number | "custom" | null>(
-    null
+    null,
   );
   const [customDays, setCustomDays] = useState("");
   const [skillInput, setSkillInput] = useState("");
@@ -56,7 +56,7 @@ export default function CreatePostPage() {
   const handleChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >
+    >,
   ) => {
     const { name, value } = e.target;
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
@@ -130,7 +130,7 @@ export default function CreatePostPage() {
 
   const computeDeadline = (): string => {
     const days =
-      deadlineDays === "custom" ? Number(customDays) : deadlineDays ?? 0;
+      deadlineDays === "custom" ? Number(customDays) : (deadlineDays ?? 0);
     if (!days || days < 1) return "";
     const d = new Date();
     d.setDate(d.getDate() + days);
@@ -173,8 +173,8 @@ export default function CreatePostPage() {
         ? `${customDays} روز`
         : ""
       : deadlineDays
-      ? DEADLINE_OPTIONS.find((o) => o.days === deadlineDays)?.label || ""
-      : "";
+        ? DEADLINE_OPTIONS.find((o) => o.days === deadlineDays)?.label || ""
+        : "";
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-blue-50/30 pb-24">
@@ -243,8 +243,8 @@ export default function CreatePostPage() {
                   isActive
                     ? "bg-blue-50/50"
                     : isClickable
-                    ? "hover:bg-gray-50 cursor-pointer"
-                    : "cursor-default"
+                      ? "hover:bg-gray-50 cursor-pointer"
+                      : "cursor-default"
                 }`}
               >
                 <div
@@ -252,8 +252,8 @@ export default function CreatePostPage() {
                     isActive
                       ? "bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/30 scale-110"
                       : isDone
-                      ? "bg-green-500 text-white"
-                      : "bg-gray-200 text-gray-500"
+                        ? "bg-green-500 text-white"
+                        : "bg-gray-200 text-gray-500"
                   }`}
                 >
                   {isDone ? "✓" : s.num}
@@ -263,8 +263,8 @@ export default function CreatePostPage() {
                     isActive
                       ? "text-blue-600 font-bold"
                       : isDone
-                      ? "text-green-600 font-medium"
-                      : "text-gray-400"
+                        ? "text-green-600 font-medium"
+                        : "text-gray-400"
                   }`}
                 >
                   {s.title}
@@ -688,7 +688,7 @@ export default function CreatePostPage() {
                   type="button"
                   onClick={() => {
                     setDeadlineDays(
-                      deadlineDays === "custom" ? null : "custom"
+                      deadlineDays === "custom" ? null : "custom",
                     );
                     setCustomDays("");
                   }}
@@ -796,8 +796,8 @@ export default function CreatePostPage() {
                       {formData.price_type === "contact"
                         ? "توافقی"
                         : formData.price
-                        ? `${formData.price} تومان`
-                        : "—"}
+                          ? `${formData.price} تومان`
+                          : "—"}
                     </div>
                     {formData.price_type === "hourly" && (
                       <div className="text-xs text-gray-500 mt-0.5">ساعتی</div>
@@ -892,7 +892,7 @@ export default function CreatePostPage() {
         )}
       </form>
 
-      <style jsx>{`
+      <style>{`
         @keyframes fade-in {
           from {
             opacity: 0;

@@ -147,7 +147,7 @@ export default function RatingModal({
         </p>
       </div>
 
-      <style jsx>{`
+      <style>{`
         @keyframes zoom-in {
           from {
             opacity: 0;

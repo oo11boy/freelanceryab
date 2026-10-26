@@ -14,9 +14,6 @@ function getUserIdFromToken(request: NextRequest): number | null {
   }
 }
 
-// -------------------------------------------------
-// GET /api/contracts?postId=9&otherUserId=4
-// -------------------------------------------------
 export async function GET(request: NextRequest) {
   try {
     const userId = getUserIdFromToken(request);
@@ -32,11 +29,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "شناسه نامعتبر" }, { status: 400 });
     }
 
-    // 🔑 صاحب آگهی رو بگیر (مستقل از قرارداد)
-    const posts = await query(`SELECT user_id FROM posts WHERE id = ?`, [postId]);
-    const postOwnerId = (posts as any[])[0]?.user_id || null;
+    const postsData = await query(
+      `SELECT user_id, status FROM posts WHERE id = ?`,
+      [postId]
+    );
+    const postOwnerId = (postsData as any[])[0]?.user_id || null;
+    const postStatus = (postsData as any[])[0]?.status || null;
 
-    // قرارداد (اگه وجود داره)
+    let role: "client" | "freelancer" | null = null;
+
     const contracts = await query(
       `SELECT c.*,
               r.rating  AS my_rating,
@@ -53,32 +54,21 @@ export async function GET(request: NextRequest) {
 
     const contract = (contracts as any[])[0] || null;
 
-    // 🔑 تشخیص نقش (به‌ترتیب اولویت):
-    let role: "client" | "freelancer" | null = null;
-
-    // ۱. اول از روی قرارداد (قطعی‌ترین)
     if (contract) {
       if (contract.client_id === userId) role = "client";
       else if (contract.freelancer_id === userId) role = "freelancer";
     }
 
-    // ۲. اگه قرارداد نبود، از روی صاحب آگهی
     if (!role && postOwnerId) {
       if (postOwnerId === userId) {
-        // من صاحب آگهیم → کارفرما
         role = "client";
       } else if (postOwnerId === otherUserId) {
-        // طرف مقابل صاحب آگهیه → من فریلنسرم
         role = "freelancer";
       } else if (otherUserId !== userId) {
-        // هیچ‌کدوم صاحب آگهی نیستن (حالت غیرعادی)
-        // ولی چون در چت هستیم، فرض می‌کنیم کاربر جاری فریلنسره
-        // (چون طرف مقابل صاحب آگهی نیست ولی در چت آگهی هست)
         role = "freelancer";
       }
     }
 
-    // امتیاز طرف مقابل (اگه قرارداد completed هست)
     let otherReview = null;
     if (contract && contract.status === "completed") {
       const revieweeId =
@@ -101,6 +91,7 @@ export async function GET(request: NextRequest) {
         : null,
       otherReview,
       postOwnerId,
+      postStatus,
       role,
     });
   } catch (error) {
@@ -112,9 +103,6 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// -------------------------------------------------
-// POST /api/contracts — شروع پروژه توسط کارفرما
-// -------------------------------------------------
 export async function POST(request: NextRequest) {
   try {
     const userId = getUserIdFromToken(request);
@@ -129,8 +117,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "اطلاعات ناقص" }, { status: 400 });
     }
 
-    // آگهی باید مال کاربر باشه
-    const posts = await query(`SELECT id, user_id FROM posts WHERE id = ?`, [
+    const posts = await query(`SELECT id, user_id, status FROM posts WHERE id = ?`, [
       postId,
     ]);
     const post = (posts as any[])[0];
@@ -143,6 +130,12 @@ export async function POST(request: NextRequest) {
         { status: 403 }
       );
     }
+    if (post.status === "locked") {
+      return NextResponse.json(
+        { error: "این آگهی قفل شده است" },
+        { status: 400 }
+      );
+    }
     if (freelancerId === userId) {
       return NextResponse.json(
         { error: "نمی‌توانید با خودتان قرارداد ببندید" },
@@ -150,7 +143,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // چک کن قبلاً قراردادی نبوده
     const existing = await query(
       `SELECT id FROM contracts
        WHERE post_id = ? AND client_id = ? AND freelancer_id = ?`,

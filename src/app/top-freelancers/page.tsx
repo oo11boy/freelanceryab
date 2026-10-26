@@ -313,8 +313,8 @@ export default function TopFreelancersPage() {
                           index === 0
                             ? "bg-gradient-to-br from-amber-400 to-yellow-500"
                             : index === 1
-                            ? "bg-gradient-to-br from-gray-300 to-gray-400"
-                            : "bg-gradient-to-br from-orange-400 to-amber-600"
+                              ? "bg-gradient-to-br from-gray-300 to-gray-400"
+                              : "bg-gradient-to-br from-orange-400 to-amber-600"
                         }`}
                       >
                         {index === 0 ? "🥇" : index === 1 ? "🥈" : "🥉"}
@@ -408,7 +408,7 @@ export default function TopFreelancersPage() {
         )}
       </div>
 
-      <style jsx>{`
+      <style>{`
         @keyframes fade-in {
           from {
             opacity: 0;

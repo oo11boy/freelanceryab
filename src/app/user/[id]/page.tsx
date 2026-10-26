@@ -84,7 +84,7 @@ export default function PublicUserPage() {
           total: 0,
           average: 0,
           distribution: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 },
-        }
+        },
       );
     } catch (error) {
       console.error("خطا در دریافت کاربر:", error);
@@ -625,7 +625,7 @@ export default function PublicUserPage() {
         </div>
       )}
 
-      <style jsx>{`
+      <style>{`
         @keyframes slide-up {
           from {
             transform: translateY(100%);

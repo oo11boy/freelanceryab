@@ -40,7 +40,6 @@ export default function Header() {
     return () => document.removeEventListener("keydown", handler);
   }, [menuOpen]);
 
-  // پنهان کردن هدر در صفحه چت (مثل BottomNav)
   if (hideBottomNav) return null;
 
   const displayName =
@@ -126,11 +125,11 @@ export default function Header() {
                   </svg>
                 </button>
 
-                {/* منوی کشویی */}
+                {/* منوی کشویی — بدون style jsx */}
                 {menuOpen && (
                   <div
                     role="menu"
-                    className="absolute left-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-xl border border-gray-100 animate-dropdown z-50 overflow-hidden"
+                    className="absolute left-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden origin-top-left animate-dropdown"
                   >
                     {/* اطلاعات کاربر */}
                     <div className="px-4 py-3.5 bg-gradient-to-br from-blue-50 to-indigo-50 border-b border-gray-100">
@@ -195,7 +194,7 @@ export default function Header() {
                       ))}
                     </div>
 
-                    {/* بخش پشتیبانی و اطلاعات */}
+                    {/* بخش پشتیبانی */}
                     <div className="py-1 border-t border-gray-100">
                       <div className="px-4 pt-2 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
                         بیشتر
@@ -254,8 +253,9 @@ export default function Header() {
         </div>
       </div>
 
-      <style jsx>{`
-        @keyframes dropdown {
+      {/* 🔑 انیمیشن dropdown با tag style معمولی (بدون styled-jsx) */}
+      <style>{`
+        @keyframes dropdownFade {
           from {
             opacity: 0;
             transform: translateY(-4px) scale(0.98);
@@ -266,8 +266,7 @@ export default function Header() {
           }
         }
         .animate-dropdown {
-          animation: dropdown 0.18s ease-out;
-          transform-origin: top left;
+          animation: dropdownFade 0.18s ease-out;
         }
       `}</style>
     </header>

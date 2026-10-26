@@ -1,4 +1,4 @@
-// src/app/api/contracts/[id]/route.ts
+// app/api/contracts/[id]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import jwt from "jsonwebtoken";
@@ -14,10 +14,6 @@ function getUserIdFromToken(request: NextRequest): number | null {
   }
 }
 
-// -------------------------------------------------
-// PUT /api/contracts/[id]
-// body: { action: 'deliver' | 'confirm' | 'cancel' }
-// -------------------------------------------------
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -52,9 +48,6 @@ export async function PUT(
       return NextResponse.json({ error: "دسترسی ندارید" }, { status: 403 });
     }
 
-    // -------------------------------------------------
-    // تحویل پروژه (فقط فریلنسر)
-    // -------------------------------------------------
     if (action === "deliver") {
       if (!isFreelancer) {
         return NextResponse.json(
@@ -77,9 +70,6 @@ export async function PUT(
       return NextResponse.json({ success: true, status: "delivered" });
     }
 
-    // -------------------------------------------------
-    // تأیید دریافت (فقط کارفرما)
-    // -------------------------------------------------
     if (action === "confirm") {
       if (!isClient) {
         return NextResponse.json(
@@ -100,7 +90,11 @@ export async function PUT(
         [contractId]
       );
 
-      // افزایش completed_projects هر دو طرف
+      await query(
+        `UPDATE posts SET status = 'completed', updated_at = NOW() WHERE id = ?`,
+        [contract.post_id]
+      );
+
       await query(
         `UPDATE users SET completed_projects = completed_projects + 1
          WHERE id IN (?, ?)`,
@@ -110,9 +104,6 @@ export async function PUT(
       return NextResponse.json({ success: true, status: "completed" });
     }
 
-    // -------------------------------------------------
-    // لغو قرارداد (فقط کارفرما و فقط در in_progress)
-    // -------------------------------------------------
     if (action === "cancel") {
       if (!isClient) {
         return NextResponse.json(
@@ -120,16 +111,29 @@ export async function PUT(
           { status: 403 }
         );
       }
-      if (contract.status !== "in_progress") {
+      if (contract.status === "completed") {
         return NextResponse.json(
-          { error: "فقط در مرحله انجام می‌توان لغو کرد" },
+          { error: "پروژه تکمیل شده، لغو ممکن نیست" },
           { status: 400 }
         );
       }
+      if (contract.status === "cancelled") {
+        return NextResponse.json(
+          { error: "قبلاً لغو شده" },
+          { status: 400 }
+        );
+      }
+
       await query(
         `UPDATE contracts SET status = 'cancelled' WHERE id = ?`,
         [contractId]
       );
+
+      await query(
+        `UPDATE posts SET status = 'active', updated_at = NOW() WHERE id = ?`,
+        [contract.post_id]
+      );
+
       return NextResponse.json({ success: true, status: "cancelled" });
     }
 
