@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/hooks/useAuth";
 import { postsAPI } from "@/app/services/api";
-import { CATEGORIES, getCategoryByDbName } from "@/app/constants/categories";
+import { useCategories, getCategoryByDbName } from "@/app/hooks/useCategories";
 
 const DEADLINE_OPTIONS = [
   { days: 1, label: "۱ روز" },
@@ -16,11 +16,11 @@ const DEADLINE_OPTIONS = [
 export default function CreatePostPage() {
   const router = useRouter();
   const { user, token, loading } = useAuth();
+  const { categories, loading: categoriesLoading } = useCategories();
   const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // 🔑 ref برای اسکرول به بالای صفحه
   const headerRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -35,9 +35,7 @@ export default function CreatePostPage() {
     skills: [] as string[],
   });
 
-  const [deadlineDays, setDeadlineDays] = useState<number | "custom" | null>(
-    null
-  );
+  const [deadlineDays, setDeadlineDays] = useState<number | "custom" | null>(null);
   const [customDays, setCustomDays] = useState("");
   const [skillInput, setSkillInput] = useState("");
 
@@ -45,20 +43,14 @@ export default function CreatePostPage() {
     if (!loading && !token) router.push("/login");
   }, [token, loading, router]);
 
-  // 🔑 اسکرول به بالای صفحه هر بار که step عوض شد
   useEffect(() => {
-    // کمی تأخیر که UI رندر بشه
     const t = setTimeout(() => {
-      window.scrollTo({
-        top: 0,
-        behavior: "smooth",
-      });
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }, 50);
-
     return () => clearTimeout(t);
   }, [step]);
 
-  if (loading) {
+  if (loading || categoriesLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
@@ -71,9 +63,7 @@ export default function CreatePostPage() {
   if (!token) return null;
 
   const handleChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
@@ -81,7 +71,6 @@ export default function CreatePostPage() {
     if (name === "category") {
       setFormData((prev) => ({ ...prev, category: value, sub_category: "" }));
     } else if (name === "price") {
-      // 🔑 فقط عدد قبول کن
       const numericValue = value.replace(/\D/g, "");
       setFormData((prev) => ({ ...prev, price: numericValue }));
     } else {
@@ -89,9 +78,6 @@ export default function CreatePostPage() {
     }
   };
 
-  // -------------------------------------------------
-  // مهارت‌ها
-  // -------------------------------------------------
   const addSkill = () => {
     const val = skillInput.trim();
     if (!val) return;
@@ -114,9 +100,6 @@ export default function CreatePostPage() {
       skills: prev.skills.filter((s) => s !== skill),
     }));
 
-  // -------------------------------------------------
-  // اعتبارسنجی
-  // -------------------------------------------------
   const validateStep = (currentStep: number): boolean => {
     const newErrors: Record<string, string> = {};
     if (currentStep === 1) {
@@ -124,39 +107,26 @@ export default function CreatePostPage() {
       if (!formData.category) newErrors.category = "دسته‌بندی را انتخاب کنید";
     }
     if (currentStep === 2) {
-      if (!formData.description.trim())
-        newErrors.description = "توضیحات را وارد کنید";
-
-      // 🔑 اگه price_type != contact، قیمت اجباریه
+      if (!formData.description.trim()) newErrors.description = "توضیحات را وارد کنید";
       if (formData.price_type !== "contact") {
         const priceNum = Number(formData.price.replace(/,/g, ""));
-
-        if (!formData.price.trim()) {
-          newErrors.price = "قیمت را وارد کنید";
-        } else if (isNaN(priceNum) || priceNum <= 0) {
-          newErrors.price = "قیمت باید بیشتر از صفر باشد";
-        }
+        if (!formData.price.trim()) newErrors.price = "قیمت را وارد کنید";
+        else if (isNaN(priceNum) || priceNum <= 0) newErrors.price = "قیمت باید بیشتر از صفر باشد";
       }
-
       if (deadlineDays === "custom") {
         const n = Number(customDays);
-        if (!customDays || n < 1 || n > 365) {
-          newErrors.deadline = "تعداد روز را بین ۱ تا ۳۶۵ وارد کنید";
-        }
+        if (!customDays || n < 1 || n > 365) newErrors.deadline = "تعداد روز را بین ۱ تا ۳۶۵ وارد کنید";
       }
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const nextStep = () => {
-    if (validateStep(step)) setStep(step + 1);
-  };
+  const nextStep = () => { if (validateStep(step)) setStep(step + 1); };
   const prevStep = () => setStep(step - 1);
 
   const computeDeadline = (): string => {
-    const days =
-      deadlineDays === "custom" ? Number(customDays) : deadlineDays ?? 0;
+    const days = deadlineDays === "custom" ? Number(customDays) : deadlineDays ?? 0;
     if (!days || days < 1) return "";
     const d = new Date();
     d.setDate(d.getDate() + days);
@@ -165,18 +135,22 @@ export default function CreatePostPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateStep(2)) {
-      setStep(2);
-      return;
-    }
+    if (!validateStep(2)) { setStep(2); return; }
 
     setSaving(true);
     try {
-      await postsAPI.createPost({
+      const result = await postsAPI.createPost({
         user_id: user?.id,
         ...formData,
         deadline: computeDeadline(),
       });
+
+      // 🔑 چک needs_approval
+      if (result?.needs_approval) {
+        alert('✅ آگهی شما ثبت شد و پس از تأیید ادمین نمایش داده می‌شه.');
+      } else {
+        alert('✅ آگهی شما با موفقیت منتشر شد!');
+      }
       router.push("/profile?created=1");
     } catch (error: any) {
       alert(error.message || "خطا در ثبت آگهی");
@@ -185,7 +159,7 @@ export default function CreatePostPage() {
     }
   };
 
-  const selectedCat = getCategoryByDbName(formData.category);
+  const selectedCat = getCategoryByDbName(categories, formData.category);
 
   const steps = [
     { num: 1, title: "اطلاعات پایه", icon: "📋" },
@@ -195,14 +169,11 @@ export default function CreatePostPage() {
 
   const deadlineLabel =
     deadlineDays === "custom"
-      ? customDays
-        ? `${customDays} روز`
-        : ""
+      ? customDays ? `${customDays} روز` : ""
       : deadlineDays
         ? DEADLINE_OPTIONS.find((o) => o.days === deadlineDays)?.label || ""
         : "";
 
-  // فرمت قیمت با جداکننده هزارگان برای پیش‌نمایش
   const formattedPrice = formData.price
     ? Number(formData.price).toLocaleString("fa-IR")
     : "";
@@ -210,37 +181,19 @@ export default function CreatePostPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-blue-50/30 pb-24">
       {/* هدر */}
-      <div
-        ref={headerRef}
-        className="bg-white/95 backdrop-blur-md border-b border-gray-200 shadow-sm sticky top-0 z-20"
-      >
+      <div ref={headerRef} className="bg-white/95 backdrop-blur-md border-b border-gray-200 shadow-sm sticky top-0 z-20">
         <div className="flex items-center gap-2 px-4 py-3">
           <button
             onClick={() => router.back()}
             className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-100 active:scale-95 transition-all"
-            aria-label="بازگشت"
           >
-            <svg
-              className="w-6 h-6 text-gray-700"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 5l7 7-7 7"
-              />
+            <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
           </button>
           <div className="flex-1">
-            <h1 className="text-base font-bold text-gray-800 text-center">
-              ثبت آگهی جدید
-            </h1>
-            <p className="text-xs text-gray-500 text-center">
-              مرحله {step} از ۳
-            </p>
+            <h1 className="text-base font-bold text-gray-800 text-center">ثبت آگهی جدید</h1>
+            <p className="text-xs text-gray-500 text-center">مرحله {step} از ۳</p>
           </div>
           <div className="w-10" />
         </div>
@@ -251,9 +204,7 @@ export default function CreatePostPage() {
               <div
                 key={n}
                 className={`flex-1 h-1.5 rounded-full transition-all duration-500 ${
-                  step >= n
-                    ? "bg-gradient-to-r from-blue-500 to-indigo-500"
-                    : "bg-gray-200"
+                  step >= n ? "bg-gradient-to-r from-blue-500 to-indigo-500" : "bg-gray-200"
                 }`}
               />
             ))}
@@ -269,16 +220,10 @@ export default function CreatePostPage() {
               <button
                 key={s.num}
                 type="button"
-                onClick={() => {
-                  if (isClickable) setStep(s.num);
-                }}
+                onClick={() => { if (isClickable) setStep(s.num); }}
                 disabled={!isClickable && !isActive}
                 className={`flex-1 py-3 flex flex-col items-center gap-1 transition-all ${
-                  isActive
-                    ? "bg-blue-50/50"
-                    : isClickable
-                      ? "hover:bg-gray-50 cursor-pointer"
-                      : "cursor-default"
+                  isActive ? "bg-blue-50/50" : isClickable ? "hover:bg-gray-50 cursor-pointer" : "cursor-default"
                 }`}
               >
                 <div
@@ -292,15 +237,9 @@ export default function CreatePostPage() {
                 >
                   {isDone ? "✓" : s.num}
                 </div>
-                <span
-                  className={`text-[10px] ${
-                    isActive
-                      ? "text-blue-600 font-bold"
-                      : isDone
-                        ? "text-green-600 font-medium"
-                        : "text-gray-400"
-                  }`}
-                >
+                <span className={`text-[10px] ${
+                  isActive ? "text-blue-600 font-bold" : isDone ? "text-green-600 font-medium" : "text-gray-400"
+                }`}>
                   {s.title}
                 </span>
               </button>
@@ -310,7 +249,7 @@ export default function CreatePostPage() {
       </div>
 
       <form ref={formRef} onSubmit={handleSubmit} className="p-4">
-        {/* --- مرحله ۱ --- */}
+        {/* مرحله ۱ */}
         {step === 1 && (
           <div className="space-y-5 animate-fade-in">
             <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-4 text-white shadow-lg shadow-blue-500/20">
@@ -319,8 +258,7 @@ export default function CreatePostPage() {
                 <div>
                   <h2 className="font-bold text-sm mb-1">بیایید شروع کنیم!</h2>
                   <p className="text-xs opacity-90 leading-relaxed">
-                    عنوان و دسته‌بندی مناسب انتخاب کنید تا آگهی شما بهتر دیده
-                    شود
+                    عنوان و دسته‌بندی مناسب انتخاب کنید تا آگهی شما بهتر دیده شود
                   </p>
                 </div>
               </div>
@@ -335,9 +273,7 @@ export default function CreatePostPage() {
                 name="title"
                 placeholder="مثال: برنامه‌نویس ری‌اکت برای پروژه فروشگاهی"
                 className={`w-full p-3.5 bg-white border rounded-xl focus:outline-none focus:ring-2 transition-all ${
-                  errors.title
-                    ? "border-red-300 focus:ring-red-500"
-                    : "border-gray-200 focus:ring-blue-500 focus:border-blue-500"
+                  errors.title ? "border-red-300 focus:ring-red-500" : "border-gray-200 focus:ring-blue-500 focus:border-blue-500"
                 }`}
                 value={formData.title}
                 onChange={handleChange}
@@ -345,15 +281,9 @@ export default function CreatePostPage() {
               />
               <div className="flex justify-between mt-1.5">
                 {errors.title ? (
-                  <p className="text-xs text-red-500 flex items-center gap-1">
-                    <span>⚠️</span> {errors.title}
-                  </p>
-                ) : (
-                  <span />
-                )}
-                <span className="text-xs text-gray-400">
-                  {formData.title.length}/100
-                </span>
+                  <p className="text-xs text-red-500 flex items-center gap-1">⚠️ {errors.title}</p>
+                ) : <span />}
+                <span className="text-xs text-gray-400">{formData.title.length}/100</span>
               </div>
             </div>
 
@@ -365,48 +295,33 @@ export default function CreatePostPage() {
                 <select
                   name="category"
                   className={`w-full p-3.5 bg-white border rounded-xl appearance-none focus:outline-none focus:ring-2 transition-all ${
-                    errors.category
-                      ? "border-red-300 focus:ring-red-500"
-                      : "border-gray-200 focus:ring-blue-500 focus:border-blue-500"
+                    errors.category ? "border-red-300 focus:ring-red-500" : "border-gray-200 focus:ring-blue-500 focus:border-blue-500"
                   }`}
                   value={formData.category}
                   onChange={handleChange}
                 >
                   <option value="">انتخاب کنید</option>
-                  {CATEGORIES.map((cat) => (
-                    <option key={cat.id} value={cat.dbName}>
+                  {categories.map((cat) => (
+                    <option key={cat.id} value={cat.db_name}>
                       {cat.icon} {cat.name}
                     </option>
                   ))}
                 </select>
                 <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </div>
               </div>
               {errors.category && (
-                <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1">
-                  <span>⚠️</span> {errors.category}
-                </p>
+                <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1">⚠️ {errors.category}</p>
               )}
             </div>
 
-            {selectedCat && (
+            {selectedCat && selectedCat.sub.length > 0 && (
               <div className="animate-fade-in">
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  زیردسته{" "}
-                  <span className="text-gray-400 font-normal">(اختیاری)</span>
+                  زیردسته <span className="text-gray-400 font-normal">(اختیاری)</span>
                 </label>
                 <div className="relative">
                   <select
@@ -417,24 +332,12 @@ export default function CreatePostPage() {
                   >
                     <option value="">انتخاب کنید</option>
                     {selectedCat.sub.map((sub) => (
-                      <option key={sub} value={sub}>
-                        {sub}
-                      </option>
+                      <option key={sub} value={sub}>{sub}</option>
                     ))}
                   </select>
                   <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-                    <svg
-                      className="w-5 h-5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 9l-7 7-7-7"
-                      />
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
                   </div>
                 </div>
@@ -447,30 +350,18 @@ export default function CreatePostPage() {
               className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3.5 rounded-xl font-semibold shadow-lg shadow-blue-500/30 hover:shadow-xl transition-all active:scale-[0.98] flex items-center justify-center gap-2"
             >
               مرحله بعد
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15 19l-7-7 7-7"
-                />
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </button>
           </div>
         )}
 
-        {/* --- مرحله ۲ --- */}
+        {/* مرحله ۲ */}
         {step === 2 && (
           <div className="space-y-5 animate-fade-in">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-3">
-                نرخ هزینه
-              </label>
+              <label className="block text-sm font-semibold text-gray-700 mb-3">نرخ هزینه</label>
               <div className="grid grid-cols-3 gap-2">
                 {[
                   { value: "fixed", label: "مبلغ ثابت", icon: "💵" },
@@ -486,7 +377,6 @@ export default function CreatePostPage() {
                         setFormData({
                           ...formData,
                           price_type: type.value,
-                          // 🔑 اگه توافقی شد، قیمت رو پاک کن
                           price: type.value === "contact" ? "" : formData.price,
                         })
                       }
@@ -497,11 +387,7 @@ export default function CreatePostPage() {
                       }`}
                     >
                       <div className="text-2xl mb-1">{type.icon}</div>
-                      <div
-                        className={`text-xs font-medium ${
-                          isActive ? "text-blue-700" : "text-gray-600"
-                        }`}
-                      >
+                      <div className={`text-xs font-medium ${isActive ? "text-blue-700" : "text-gray-600"}`}>
                         {type.label}
                       </div>
                     </button>
@@ -513,10 +399,7 @@ export default function CreatePostPage() {
             {formData.price_type !== "contact" && (
               <div className="animate-fade-in">
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  مبلغ{" "}
-                  {formData.price_type === "fixed"
-                    ? "(کل پروژه)"
-                    : "(ساعتی)"}{" "}
+                  مبلغ {formData.price_type === "fixed" ? "(کل پروژه)" : "(ساعتی)"}{" "}
                   <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
@@ -526,27 +409,15 @@ export default function CreatePostPage() {
                     inputMode="numeric"
                     placeholder="مثلاً ۵۰۰۰۰۰"
                     className={`w-full p-3.5 pl-16 bg-white border rounded-xl focus:outline-none focus:ring-2 transition-all ${
-                      errors.price
-                        ? "border-red-300 focus:ring-red-500"
-                        : "border-gray-200 focus:ring-blue-500 focus:border-blue-500"
+                      errors.price ? "border-red-300 focus:ring-red-500" : "border-gray-200 focus:ring-blue-500 focus:border-blue-500"
                     }`}
                     value={formData.price}
                     onChange={handleChange}
                     dir="ltr"
                   />
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 font-medium">
-                    تومان
-                  </span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 font-medium">تومان</span>
                 </div>
-                {errors.price && (
-                  <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1">
-                    <span>⚠️</span> {errors.price}
-                  </p>
-                )}
-                <p className="text-[10px] text-gray-500 mt-1.5 flex items-center gap-1">
-                  <span>💡</span>
-                  مبلغ را به تومان وارد کنید (بدون اعشار)
-                </p>
+                {errors.price && <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1">⚠️ {errors.price}</p>}
               </div>
             )}
 
@@ -559,9 +430,7 @@ export default function CreatePostPage() {
                 rows={7}
                 placeholder="شرح کامل پروژه، نیازمندی‌ها و انتظارات خود را بنویسید..."
                 className={`w-full p-3.5 bg-white border rounded-xl focus:outline-none focus:ring-2 transition-all resize-none ${
-                  errors.description
-                    ? "border-red-300 focus:ring-red-500"
-                    : "border-gray-200 focus:ring-blue-500 focus:border-blue-500"
+                  errors.description ? "border-red-300 focus:ring-red-500" : "border-gray-200 focus:ring-blue-500 focus:border-blue-500"
                 }`}
                 value={formData.description}
                 onChange={handleChange}
@@ -569,22 +438,15 @@ export default function CreatePostPage() {
               />
               <div className="flex justify-between mt-1.5">
                 {errors.description ? (
-                  <p className="text-xs text-red-500 flex items-center gap-1">
-                    <span>⚠️</span> {errors.description}
-                  </p>
-                ) : (
-                  <span />
-                )}
-                <span className="text-xs text-gray-400">
-                  {formData.description.length}/2000
-                </span>
+                  <p className="text-xs text-red-500 flex items-center gap-1">⚠️ {errors.description}</p>
+                ) : <span />}
+                <span className="text-xs text-gray-400">{formData.description.length}/2000</span>
               </div>
             </div>
 
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
-                مهارت‌های مورد نیاز{" "}
-                <span className="text-gray-400 font-normal">(اختیاری)</span>
+                مهارت‌های مورد نیاز <span className="text-gray-400 font-normal">(اختیاری)</span>
               </label>
               <div className="flex gap-2">
                 <input
@@ -593,55 +455,31 @@ export default function CreatePostPage() {
                   onChange={(e) => setSkillInput(e.target.value)}
                   onKeyDown={handleSkillKeyDown}
                   placeholder="مثلاً React یا Python"
-                  className="flex-1 p-3.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                  className="flex-1 p-3.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <button
                   type="button"
                   onClick={addSkill}
                   disabled={!skillInput.trim()}
-                  className="w-[54px] h-[54px] rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-blue-500/30 active:scale-95 transition-all shrink-0"
-                  aria-label="افزودن مهارت"
+                  className="w-[54px] h-[54px] rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center disabled:opacity-40 shrink-0"
                 >
-                  <svg
-                    className="w-6 h-6"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2.5}
-                      d="M12 4v16m8-8H4"
-                    />
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
                   </svg>
                 </button>
               </div>
               {formData.skills.length > 0 && (
                 <div className="flex flex-wrap gap-2 mt-3">
                   {formData.skills.map((skill, idx) => (
-                    <span
-                      key={idx}
-                      className="bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 border border-blue-200 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-2 animate-fade-in"
-                    >
+                    <span key={idx} className="bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 border border-blue-200 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-2">
                       {skill}
                       <button
                         type="button"
                         onClick={() => handleRemoveSkill(skill)}
-                        className="w-5 h-5 rounded-full bg-blue-100 hover:bg-red-100 hover:text-red-600 flex items-center justify-center transition-colors"
+                        className="w-5 h-5 rounded-full bg-blue-100 hover:bg-red-100 hover:text-red-600 flex items-center justify-center"
                       >
-                        <svg
-                          className="w-3 h-3"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={3}
-                            d="M6 18L18 6M6 6l12 12"
-                          />
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
                         </svg>
                       </button>
                     </span>
@@ -661,7 +499,7 @@ export default function CreatePostPage() {
               <button
                 type="button"
                 onClick={nextStep}
-                className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 rounded-xl font-semibold shadow-lg shadow-blue-500/30 hover:shadow-xl transition-all active:scale-[0.98]"
+                className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 rounded-xl font-semibold shadow-lg shadow-blue-500/30 active:scale-[0.98]"
               >
                 بعدی
               </button>
@@ -669,44 +507,36 @@ export default function CreatePostPage() {
           </div>
         )}
 
-        {/* --- مرحله ۳ --- */}
+        {/* مرحله ۳ */}
         {step === 3 && (
           <div className="space-y-5 animate-fade-in">
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2">
               <span className="text-xl">💡</span>
               <p className="text-xs text-amber-800 leading-relaxed">
-                لطفاً قبل از ثبت، اطلاعات را یک بار مرور کنید. پس از ثبت
-                می‌توانید آگهی را ویرایش کنید.
+                لطفاً قبل از ثبت، اطلاعات را یک بار مرور کنید. پس از ثبت می‌توانید آگهی را ویرایش کنید.
               </p>
             </div>
 
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
-                موقعیت مکانی{" "}
-                <span className="text-gray-400 font-normal">(اختیاری)</span>
+                موقعیت مکانی <span className="text-gray-400 font-normal">(اختیاری)</span>
               </label>
               <div className="relative">
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
-                  📍
-                </span>
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">📍</span>
                 <input
                   type="text"
                   name="location"
                   placeholder="شهر خود را وارد کنید"
-                  className="w-full p-3.5 pr-11 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                  className="w-full p-3.5 pr-11 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
                   value={formData.location}
                   onChange={handleChange}
                 />
               </div>
-              <p className="text-xs text-gray-500 mt-1.5">
-                برای پروژه‌های حضوری الزامی است
-              </p>
             </div>
 
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
-                مهلت انجام{" "}
-                <span className="text-gray-400 font-normal">(اختیاری)</span>
+                مهلت انجام <span className="text-gray-400 font-normal">(اختیاری)</span>
               </label>
               <div className="flex flex-wrap gap-2">
                 {DEADLINE_OPTIONS.map((opt) => {
@@ -721,9 +551,7 @@ export default function CreatePostPage() {
                         setErrors((prev) => ({ ...prev, deadline: "" }));
                       }}
                       className={`px-4 py-2 rounded-xl text-sm font-medium border-2 transition-all active:scale-95 ${
-                        isActive
-                          ? "border-blue-500 bg-blue-50 text-blue-700 shadow-sm"
-                          : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
+                        isActive ? "border-blue-500 bg-blue-50 text-blue-700 shadow-sm" : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
                       }`}
                     >
                       {opt.label}
@@ -733,15 +561,11 @@ export default function CreatePostPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    setDeadlineDays(
-                      deadlineDays === "custom" ? null : "custom"
-                    );
+                    setDeadlineDays(deadlineDays === "custom" ? null : "custom");
                     setCustomDays("");
                   }}
                   className={`px-4 py-2 rounded-xl text-sm font-medium border-2 transition-all active:scale-95 ${
-                    deadlineDays === "custom"
-                      ? "border-blue-500 bg-blue-50 text-blue-700 shadow-sm"
-                      : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
+                    deadlineDays === "custom" ? "border-blue-500 bg-blue-50 text-blue-700 shadow-sm" : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
                   }`}
                 >
                   دلخواه
@@ -761,44 +585,15 @@ export default function CreatePostPage() {
                         setErrors((prev) => ({ ...prev, deadline: "" }));
                       }}
                       placeholder="مثلاً ۱۰"
-                      className={`w-full p-3.5 pl-20 bg-white border rounded-xl focus:outline-none focus:ring-2 transition-all ${
-                        errors.deadline
-                          ? "border-red-300 focus:ring-red-500"
-                          : "border-gray-200 focus:ring-blue-500 focus:border-blue-500"
+                      className={`w-full p-3.5 pl-20 bg-white border rounded-xl focus:outline-none focus:ring-2 ${
+                        errors.deadline ? "border-red-300 focus:ring-red-500" : "border-gray-200 focus:ring-blue-500"
                       }`}
                       dir="ltr"
                     />
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 font-medium">
-                      روز
-                    </span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 font-medium">روز</span>
                   </div>
-                  {errors.deadline && (
-                    <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1">
-                      <span>⚠️</span> {errors.deadline}
-                    </p>
-                  )}
+                  {errors.deadline && <p className="text-xs text-red-500 mt-1.5">⚠️ {errors.deadline}</p>}
                 </div>
-              )}
-
-              {deadlineDays && (
-                <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
-                  <span>📅</span>
-                  تحویل تا{" "}
-                  {(() => {
-                    const days =
-                      deadlineDays === "custom"
-                        ? Number(customDays)
-                        : deadlineDays;
-                    if (!days) return "—";
-                    const d = new Date();
-                    d.setDate(d.getDate() + days);
-                    return d.toLocaleDateString("fa-IR", {
-                      weekday: "long",
-                      month: "long",
-                      day: "numeric",
-                    });
-                  })()}
-                </p>
               )}
             </div>
 
@@ -813,11 +608,7 @@ export default function CreatePostPage() {
                 <div>
                   <div className="text-xs text-gray-500 mb-1">عنوان</div>
                   <div className="font-bold text-gray-800 text-sm leading-relaxed">
-                    {formData.title || (
-                      <span className="text-gray-400 italic">
-                        عنوان وارد نشده
-                      </span>
-                    )}
+                    {formData.title || <span className="text-gray-400 italic">عنوان وارد نشده</span>}
                   </div>
                 </div>
 
@@ -828,68 +619,38 @@ export default function CreatePostPage() {
                       {selectedCat?.name || "—"}
                     </div>
                     {formData.sub_category && (
-                      <div className="text-xs text-gray-500 mt-0.5">
-                        {formData.sub_category}
-                      </div>
+                      <div className="text-xs text-gray-500 mt-0.5">{formData.sub_category}</div>
                     )}
                   </div>
                   <div className="bg-gray-50 rounded-lg p-2.5">
                     <div className="text-xs text-gray-500 mb-0.5">قیمت</div>
-                    <div
-                      className="text-sm font-semibold text-gray-800"
-                      dir="ltr"
-                    >
+                    <div className="text-sm font-semibold text-gray-800" dir="ltr">
                       {formData.price_type === "contact"
                         ? "توافقی"
                         : formattedPrice
                           ? `${formattedPrice} تومان`
                           : "—"}
                     </div>
-                    {formData.price_type === "hourly" && (
-                      <div className="text-xs text-gray-500 mt-0.5">ساعتی</div>
-                    )}
                   </div>
                 </div>
 
                 {formData.description && (
                   <div>
                     <div className="text-xs text-gray-500 mb-1">توضیحات</div>
-                    <p className="text-sm text-gray-700 leading-relaxed line-clamp-3">
-                      {formData.description}
-                    </p>
+                    <p className="text-sm text-gray-700 leading-relaxed line-clamp-3">{formData.description}</p>
                   </div>
                 )}
 
                 {formData.skills.length > 0 && (
                   <div>
-                    <div className="text-xs text-gray-500 mb-1.5">
-                      مهارت‌های مورد نیاز
-                    </div>
+                    <div className="text-xs text-gray-500 mb-1.5">مهارت‌ها</div>
                     <div className="flex flex-wrap gap-1.5">
                       {formData.skills.map((skill, idx) => (
-                        <span
-                          key={idx}
-                          className="bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-md text-xs font-medium"
-                        >
+                        <span key={idx} className="bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-md text-xs font-medium">
                           {skill}
                         </span>
                       ))}
                     </div>
-                  </div>
-                )}
-
-                {(formData.location || deadlineLabel) && (
-                  <div className="flex flex-wrap gap-3 pt-2 border-t border-gray-100">
-                    {formData.location && (
-                      <div className="flex items-center gap-1 text-xs text-gray-600">
-                        <span>📍</span> {formData.location}
-                      </div>
-                    )}
-                    {deadlineLabel && (
-                      <div className="flex items-center gap-1 text-xs text-gray-600">
-                        <span>⏳</span> مهلت: {deadlineLabel}
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
@@ -900,14 +661,14 @@ export default function CreatePostPage() {
                 type="button"
                 onClick={prevStep}
                 disabled={saving}
-                className="flex-1 bg-white border-2 border-gray-300 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-50 transition-colors active:scale-[0.98] disabled:opacity-50"
+                className="flex-1 bg-white border-2 border-gray-300 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-50 disabled:opacity-50"
               >
                 قبلی
               </button>
               <button
                 type="submit"
                 disabled={saving}
-                className="flex-[2] bg-gradient-to-r from-green-600 to-emerald-600 text-white py-3 rounded-xl font-semibold shadow-lg shadow-green-500/30 hover:shadow-xl transition-all active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-2"
+                className="flex-[2] bg-gradient-to-r from-green-600 to-emerald-600 text-white py-3 rounded-xl font-semibold shadow-lg shadow-green-500/30 disabled:opacity-60 flex items-center justify-center gap-2"
               >
                 {saving ? (
                   <>
@@ -916,18 +677,8 @@ export default function CreatePostPage() {
                   </>
                 ) : (
                   <>
-                    <svg
-                      className="w-5 h-5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 13l4 4L19 7"
-                      />
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                     ثبت آگهی
                   </>
@@ -940,18 +691,10 @@ export default function CreatePostPage() {
 
       <style>{`
         @keyframes fade-in {
-          from {
-            opacity: 0;
-            transform: translateY(8px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+          from { opacity: 0; transform: translateY(8px); }
+          to { opacity: 1; transform: translateY(0); }
         }
-        .animate-fade-in {
-          animation: fade-in 0.3s ease-out;
-        }
+        .animate-fade-in { animation: fade-in 0.3s ease-out; }
       `}</style>
     </div>
   );

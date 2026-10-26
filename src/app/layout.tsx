@@ -1,8 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import BottomNav from "./components/BottomNav";
 import { AuthProvider } from "./hooks/useAuth";
 import { UIProvider } from "./hooks/useUILayout";
+import ClientLayout from "./components/ClientLayout";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -29,14 +29,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="fa" dir="rtl" suppressHydrationWarning>
-      <body
-        suppressHydrationWarning
-        className="max-w-md mx-auto bg-gray-100 relative pb-20"
-      >
+      <body suppressHydrationWarning>
         <AuthProvider>
           <UIProvider>
-            {children}
-            <BottomNav />
+            <ClientLayout>{children}</ClientLayout>
           </UIProvider>
         </AuthProvider>
       </body>

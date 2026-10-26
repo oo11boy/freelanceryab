@@ -29,11 +29,14 @@ const pool = mysql.createPool({
   console.error('MySQL pool error:', err.message);
 });
 
-// 🔑 استفاده از query به جای execute
-export async function query(sql: string, params?: any[]) {
+// 🔑 query با generic — خروجی T[] می‌ده
+export async function query<T = any>(
+  sql: string,
+  params?: any[]
+): Promise<T[]> {
   try {
     const [rows] = await pool.query(sql, params);
-    return rows;
+    return rows as T[];
   } catch (error: any) {
     console.error('Database error:', error.message);
     throw error;

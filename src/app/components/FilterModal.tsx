@@ -1,6 +1,7 @@
-"use client";
-import { useState } from "react";
-import { getCategoryBySlug } from "@/app/constants/categories";
+// app/components/FilterModal.tsx
+'use client';
+import { useState, useEffect } from "react";
+import { useCategories, getCategoryBySlug } from "@/app/hooks/useCategories";
 
 export interface FilterValues {
   minPrice?: number;
@@ -22,11 +23,12 @@ export function FilterModal({
   categorySlug,
   onApply,
 }: FilterModalProps) {
+  const { categories } = useCategories();
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 10_000_000]);
   const [selectedLocation, setSelectedLocation] = useState("");
   const [selectedSub, setSelectedSub] = useState("");
 
-  const category = categorySlug ? getCategoryBySlug(categorySlug) : null;
+  const category = categorySlug ? getCategoryBySlug(categories, categorySlug) : null;
 
   if (!isOpen) return null;
 
@@ -64,9 +66,7 @@ export function FilterModal({
               <input
                 type="number"
                 value={priceRange[0]}
-                onChange={(e) =>
-                  setPriceRange([Number(e.target.value), priceRange[1]])
-                }
+                onChange={(e) => setPriceRange([Number(e.target.value), priceRange[1]])}
                 className="flex-1 p-2 border rounded-lg"
                 placeholder="حداقل"
               />
@@ -74,9 +74,7 @@ export function FilterModal({
               <input
                 type="number"
                 value={priceRange[1]}
-                onChange={(e) =>
-                  setPriceRange([priceRange[0], Number(e.target.value)])
-                }
+                onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value)])}
                 className="flex-1 p-2 border rounded-lg"
                 placeholder="حداکثر"
               />
@@ -117,16 +115,10 @@ export function FilterModal({
           </div>
 
           <div className="flex gap-3 pt-4">
-            <button
-              onClick={handleReset}
-              className="flex-1 bg-gray-200 py-3 rounded-lg font-semibold"
-            >
+            <button onClick={handleReset} className="flex-1 bg-gray-200 py-3 rounded-lg font-semibold">
               حذف فیلترها
             </button>
-            <button
-              onClick={handleApply}
-              className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold"
-            >
+            <button onClick={handleApply} className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold">
               اعمال فیلتر
             </button>
           </div>

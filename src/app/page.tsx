@@ -3,9 +3,9 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import PostCard from "./components/PostCard";
 import { postsAPI } from "./services/api";
-import { CATEGORIES } from "./constants/categories";
 import Header from "./components/Header";
 import TopFreelancers from "./components/TopFreelancers";
+import { useCategories } from "@/app/hooks/useCategories";
 
 interface Post {
   id: number;
@@ -22,6 +22,7 @@ export default function HomePage() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const { categories, loading: categoriesLoading } = useCategories();
 
   useEffect(() => {
     loadPosts();
@@ -140,18 +141,33 @@ export default function HomePage() {
         </div>
         <div className="overflow-x-auto hide-scrollbar">
           <div className="flex gap-2.5 px-4">
-            {CATEGORIES.map((cat) => (
-              <Link
-                key={cat.slug}
-                href={`/category/${cat.slug}`}
-                className="flex flex-col items-center p-3 rounded-2xl bg-white border border-gray-100 min-w-[76px] hover:shadow-md hover:border-blue-200 active:scale-95 transition-all shrink-0"
-              >
-                <span className="text-2xl mb-1.5">{cat.icon}</span>
-                <span className="text-[11px] font-medium text-gray-700 text-center leading-tight">
-                  {cat.name}
-                </span>
-              </Link>
-            ))}
+            {categoriesLoading ? (
+              // 🔑 Skeleton در حال بارگذاری
+              <>
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <div
+                    key={i}
+                    className="flex flex-col items-center p-3 rounded-2xl bg-white border border-gray-100 min-w-[76px] shrink-0 animate-pulse"
+                  >
+                    <div className="w-8 h-8 bg-gray-200 rounded-full mb-1.5" />
+                    <div className="h-3 w-12 bg-gray-200 rounded" />
+                  </div>
+                ))}
+              </>
+            ) : (
+              categories.map((cat) => (
+                <Link
+                  key={cat.id}
+                  href={`/category/${cat.slug}`}
+                  className="flex flex-col items-center p-3 rounded-2xl bg-white border border-gray-100 min-w-[76px] hover:shadow-md hover:border-blue-200 active:scale-95 transition-all shrink-0"
+                >
+                  <span className="text-2xl mb-1.5">{cat.icon}</span>
+                  <span className="text-[11px] font-medium text-gray-700 text-center leading-tight">
+                    {cat.name}
+                  </span>
+                </Link>
+              ))
+            )}
           </div>
         </div>
       </div>

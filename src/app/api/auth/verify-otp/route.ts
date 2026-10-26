@@ -21,12 +21,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 🔑 نرمال‌سازی کد (حذف فاصله، تبدیل ارقام فارسی)
+    const normalizedCode = String(code)
+      .replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
+      .replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
+      .trim();
+
+    if (!/^\d{5}$/.test(normalizedCode)) {
+      return NextResponse.json(
+        { error: 'کد تأیید باید ۵ رقم باشد' },
+        { status: 400 }
+      );
+    }
+
+    // 🔑 چک کردن کد (فقط آخرین کد استفاده‌نشده، بدون شرط expires_at توی query)
     const otpRecords = await query(
-      `SELECT * FROM otp_codes
+      `SELECT id, code, expires_at, created_at
+       FROM otp_codes
        WHERE phone = ? AND code = ? AND is_used = FALSE
-       AND expires_at > NOW()
-       ORDER BY created_at DESC LIMIT 1`,
-      [phone, code]
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [phone, normalizedCode]
     );
 
     const otp = (otpRecords as any[])[0];
@@ -38,8 +53,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 🔑 چک انقضا در JS (نه MySQL) — چون timezone ممکنه فرق کنه
+    const now = Date.now();
+    const expiresAt = new Date(otp.expires_at).getTime();
+
+    if (isNaN(expiresAt) || expiresAt < now) {
+      // پاک کردن کد منقضی
+      await query('UPDATE otp_codes SET is_used = TRUE WHERE id = ?', [otp.id]);
+      return NextResponse.json(
+        { error: 'کد تأیید منقضی شده است. کد جدید دریافت کنید' },
+        { status: 400 }
+      );
+    }
+
+    // 🔑 علامت استفاده
     await query('UPDATE otp_codes SET is_used = TRUE WHERE id = ?', [otp.id]);
 
+    // پیدا کردن یا ساختن کاربر
     let users = await query('SELECT * FROM users WHERE phone = ?', [phone]);
     let user = (users as any[])[0];
     let isNewUser = false;

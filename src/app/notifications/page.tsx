@@ -7,7 +7,7 @@ import { notificationsAPI } from '@/app/services/api';
 
 interface Notification {
   id: number;
-  type: 'message' | 'offer' | 'system' | 'reminder';
+  type: string;
   title: string;
   message: string;
   link: string | null;
@@ -43,24 +43,44 @@ const TYPE_CONFIG: Record<
     iconBg: 'bg-amber-100 text-amber-600',
     label: 'یادآوری',
   },
+  info: {
+    icon: 'ℹ️',
+    bg: 'from-blue-50 to-cyan-50',
+    iconBg: 'bg-blue-100 text-blue-600',
+    label: 'اطلاع',
+  },
+  warning: {
+    icon: '⚠️',
+    bg: 'from-amber-50 to-red-50',
+    iconBg: 'bg-amber-100 text-amber-700',
+    label: 'اخطار',
+  },
+  success: {
+    icon: '✅',
+    bg: 'from-green-50 to-emerald-50',
+    iconBg: 'bg-green-100 text-green-700',
+    label: 'موفقیت',
+  },
 };
 
 export default function NotificationsPage() {
   const router = useRouter();
-  const { token } = useAuth();
+  const { token, loading: authLoading } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
   const [markingAll, setMarkingAll] = useState(false);
 
   useEffect(() => {
+    if (authLoading) return;
+
     if (!token) {
       router.push('/login');
       return;
     }
     loadNotifications();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
+  }, [token, authLoading]);
 
   const loadNotifications = async () => {
     try {
@@ -133,6 +153,17 @@ export default function NotificationsPage() {
     filter === 'all' ? true : !n.is_read
   );
   const unreadCount = notifications.filter((n) => !n.is_read).length;
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="mt-4 text-gray-600 text-sm">در حال بارگذاری...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!token) return null;
 
@@ -284,14 +315,12 @@ export default function NotificationsPage() {
                   }`}
                 >
                   <div className="flex items-start gap-3">
-                    {/* آیکون */}
                     <div
                       className={`w-11 h-11 rounded-xl ${config.iconBg} flex items-center justify-center text-xl shrink-0 group-hover:scale-105 transition-transform`}
                     >
                       {config.icon}
                     </div>
 
-                    {/* محتوا */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2 mb-0.5">
                         <h3
@@ -311,7 +340,6 @@ export default function NotificationsPage() {
                         {notif.message}
                       </p>
 
-                      {/* برچسب نوع + وضعیت */}
                       <div className="flex items-center gap-2 mt-2">
                         <span
                           className={`text-[10px] px-2 py-0.5 rounded-md font-medium ${config.iconBg}`}
@@ -345,7 +373,6 @@ export default function NotificationsPage() {
                       </div>
                     </div>
 
-                    {/* نقطه خوانده نشده */}
                     {!notif.is_read && (
                       <div className="w-2 h-2 bg-blue-600 rounded-full shrink-0 mt-1.5" />
                     )}

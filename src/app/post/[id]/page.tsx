@@ -5,7 +5,8 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { postsAPI, savedAPI, messagesAPI } from "@/app/services/api";
 import { useAuth } from "@/app/hooks/useAuth";
-import { categoryLabel, categoryIcon } from "@/app/constants/categories";
+import { useCategories, categoryLabel, categoryIcon } from "@/app/hooks/useCategories";
+import ReportModal from "@/app/components/ReportModal";
 
 interface Post {
   id: number;
@@ -34,11 +35,13 @@ export default function PostDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { user, token } = useAuth();
+  const { categories } = useCategories();
   const [post, setPost] = useState<Post | null>(null);
   const [owner, setOwner] = useState<PostOwner | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSaved, setIsSaved] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [savedLoading, setSavedLoading] = useState(false);
@@ -91,6 +94,14 @@ export default function PostDetailPage() {
     } finally {
       setSavedLoading(false);
     }
+  };
+
+  const handleReport = () => {
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+    setShowReportModal(true);
   };
 
   const handleSendMessage = async () => {
@@ -221,13 +232,14 @@ export default function PostDetailPage() {
   const deadlineStatus = post.deadline
     ? getDeadlineStatus(post.deadline)
     : null;
-  const displayCategory = categoryLabel(post.category);
+  const displayCategory = categoryLabel(categories, post.category);
+  const displayIcon = categoryIcon(categories, post.category);
 
   return (
     <div className="min-h-screen bg-gray-50 pb-28">
       {/* هدر */}
       <div className="bg-white/90 backdrop-blur-md border-b border-gray-200 shadow-sm sticky top-0 z-20">
-        <div className="px-3 py-3 flex items-center gap-2">
+        <div className="px-3 py-3 flex items-center gap-1">
           <button
             onClick={() => router.back()}
             className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-100 active:scale-95 transition-all"
@@ -250,6 +262,31 @@ export default function PostDetailPage() {
           <h1 className="text-base font-bold text-gray-800 flex-1 text-center">
             جزئیات آگهی
           </h1>
+
+          {/* دکمه گزارش */}
+          {!isOwner && (
+            <button
+              onClick={handleReport}
+              className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-red-50 active:scale-90 transition-all group"
+              aria-label="گزارش تخلف"
+              title="گزارش تخلف"
+            >
+              <svg
+                className="w-5 h-5 text-gray-500 group-hover:text-red-600 transition-colors"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9"
+                />
+              </svg>
+            </button>
+          )}
+
           <button
             onClick={handleSave}
             disabled={savedLoading}
@@ -311,7 +348,7 @@ export default function PostDetailPage() {
             href={`/explore?category=${encodeURIComponent(post.category)}`}
             className="inline-flex items-center gap-1.5 bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-medium mb-3 hover:bg-blue-100 transition-colors"
           >
-            <span>{categoryIcon(post.category)}</span>
+            <span>{displayIcon}</span>
             {displayCategory}
             {post.sub_category && (
               <>
@@ -504,6 +541,29 @@ export default function PostDetailPage() {
             </Link>
           </div>
         </div>
+
+        {/* دکمه گزارش زیرین */}
+        {!isOwner && (
+          <button
+            onClick={handleReport}
+            className="w-full flex items-center justify-center gap-2 text-xs text-red-600 font-semibold py-3 rounded-xl border-2 border-red-100 bg-red-50/50 hover:bg-red-50 active:scale-[0.98] transition-all"
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9"
+              />
+            </svg>
+            گزارش این آگهی
+          </button>
+        )}
 
         {/* هشدار امنیتی */}
         <div className="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-200 rounded-2xl p-4 shadow-sm">
@@ -755,6 +815,15 @@ export default function PostDetailPage() {
           </div>
         </div>
       )}
+
+      {/* مودال گزارش تخلف */}
+      <ReportModal
+        open={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        targetType="post"
+        targetId={post.id}
+        token={token}
+      />
 
       <style>{`
         @keyframes slide-up {

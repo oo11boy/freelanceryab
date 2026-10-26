@@ -22,6 +22,8 @@ export async function GET(
     const { id } = await params;
     const postId = parseInt(id);
 
+    console.log("🔍 [GET /api/posts/:id] postId =", postId, "raw id =", id);
+
     if (isNaN(postId)) {
       return NextResponse.json({ error: "شناسه نامعتبر" }, { status: 400 });
     }
@@ -43,6 +45,8 @@ export async function GET(
       [postId]
     );
 
+    console.log("🔍 [GET /api/posts/:id] found =", (posts as any[]).length);
+
     if (!posts || (posts as any[]).length === 0) {
       return NextResponse.json(
         { error: "آگهی مورد نظر یافت نشد" },
@@ -52,6 +56,8 @@ export async function GET(
 
     const post = (posts as any[])[0];
 
+    console.log("🔍 [GET /api/posts/:id] status =", post.status);
+
     if (
       post.status !== "active" &&
       post.status !== "locked" &&
@@ -59,6 +65,7 @@ export async function GET(
       post.status !== "delivered" &&
       post.status !== "completed"
     ) {
+      console.log("🔍 [GET /api/posts/:id] BLOCKED: status not allowed →", post.status);
       return NextResponse.json(
         { error: "آگهی مورد نظر یافت نشد" },
         { status: 404 }

@@ -216,45 +216,57 @@ export default function ProfilePage() {
     return `${Math.floor(days / 30)} ماه پیش`;
   };
 
-  const getStatusBadge = (status: string) => {
-    if (status === "active") {
-      return {
-        label: "● فعال",
-        classes: "bg-green-50 text-green-700 border border-green-200",
-      };
-    }
-    if (status === "locked") {
-      return {
-        label: "🔒 قفل شده",
-        classes: "bg-purple-50 text-purple-700 border border-purple-200",
-      };
-    }
-    if (status === "in_progress") {
-      return {
-        label: "🔄 در حال انجام",
-        classes: "bg-amber-50 text-amber-700 border border-amber-200",
-      };
-    }
-    if (status === "delivered") {
-      return {
-        label: "📦 منتظر تأیید",
-        classes: "bg-orange-50 text-orange-700 border border-orange-200",
-      };
-    }
-    if (status === "completed") {
-      return {
-        label: "✅ تکمیل شده",
-        classes: "bg-blue-50 text-blue-700 border border-blue-200",
-      };
-    }
-    if (status === "expired") {
-      return {
-        label: "🗑 حذف شده",
-        classes: "bg-red-50 text-red-600 border border-red-200",
-      };
-    }
-    return { label: status, classes: "bg-gray-100 text-gray-600" };
-  };
+const getStatusBadge = (status: string) => {
+  if (status === "pending") {
+    return {
+      label: "⏳ در انتظار تأیید",
+      classes: "bg-amber-50 text-amber-700 border border-amber-200",
+    };
+  }
+  if (status === "active") {
+    return {
+      label: "● فعال",
+      classes: "bg-green-50 text-green-700 border border-green-200",
+    };
+  }
+  if (status === "locked") {
+    return {
+      label: "🔒 قفل شده",
+      classes: "bg-purple-50 text-purple-700 border border-purple-200",
+    };
+  }
+  if (status === "in_progress") {
+    return {
+      label: "🔄 در حال انجام",
+      classes: "bg-amber-50 text-amber-700 border border-amber-200",
+    };
+  }
+  if (status === "delivered") {
+    return {
+      label: "📦 منتظر تأیید",
+      classes: "bg-orange-50 text-orange-700 border border-orange-200",
+    };
+  }
+  if (status === "completed") {
+    return {
+      label: "✅ تکمیل شده",
+      classes: "bg-blue-50 text-blue-700 border border-blue-200",
+    };
+  }
+  if (status === "rejected") {
+    return {
+      label: "❌ رد شده",
+      classes: "bg-red-50 text-red-600 border border-red-200",
+    };
+  }
+  if (status === "expired") {
+    return {
+      label: "🗑 حذف شده",
+      classes: "bg-red-50 text-red-600 border border-red-200",
+    };
+  }
+  return { label: status, classes: "bg-gray-100 text-gray-600" };
+};
 
   if (!token) {
     return (
@@ -689,7 +701,62 @@ export default function ProfilePage() {
                             📦 منتظر تأیید
                           </div>
                         </div>
-                      ) : isExpired ? (
+                      ) :
+                       post.status === "pending" ? (
+  // ⏳ در انتظار تأیید
+  <div className="flex gap-2">
+    <div className="flex-1 text-xs bg-amber-50 border border-amber-200 text-amber-700 py-2.5 rounded-xl font-bold text-center flex items-center justify-center gap-1">
+      ⏳ در انتظار تأیید
+    </div>
+    <button
+      onClick={() => handleDeletePost(post.id)}
+      disabled={isDeleting}
+      className="flex-1 text-xs border-2 border-red-200 text-red-600 py-2.5 rounded-xl font-bold hover:bg-red-50 transition-colors active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-1.5"
+    >
+      {isDeleting ? (
+        <>
+          <div className="w-3.5 h-3.5 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
+          در حال حذف...
+        </>
+      ) : (
+        <>
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+            />
+          </svg>
+          حذف
+        </>
+      )}
+    </button>
+  </div>
+) : post.status === "rejected" ? (
+  // ❌ رد شده
+  <div className="w-full bg-red-50 border border-red-200 text-red-600 py-2.5 rounded-xl font-bold text-xs text-center flex items-center justify-center gap-1.5">
+    <svg
+      className="w-4 h-4"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M6 18L18 6M6 6l12 12"
+      />
+    </svg>
+    رد شده توسط ادمین
+  </div>
+) :     isExpired ? (
                         <div className="w-full bg-gray-100 border border-gray-200 text-gray-500 py-2.5 rounded-xl font-bold text-xs text-center flex items-center justify-center gap-1.5">
                           <svg
                             className="w-4 h-4"

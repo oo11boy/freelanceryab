@@ -1,194 +1,196 @@
-"use client";
-import { useParams, useRouter } from "next/navigation";
-import { useState, useEffect, useMemo } from "react";
-import PostCard from "@/app/components/PostCard";
-import { FilterModal, FilterValues } from "@/app/components/FilterModal";
-import { postsAPI } from "@/app/services/api";
-import { getCategoryBySlug } from "@/app/constants/categories";
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
+import PostCard from '@/app/components/PostCard';
+import { postsAPI } from '@/app/services/api';
+import { useCategories } from '@/app/hooks/useCategories';
 
 interface Post {
   id: number;
   title: string;
   price: string;
   category: string;
-  sub_category?: string;
   location: string;
   created_at: string;
 }
 
-const SORT_MAP: Record<string, string> = {
-  newest: "newest",
-  "price-asc": "price_asc",
-  "price-desc": "price_desc",
-  "most-viewed": "most_viewed",
-};
-
 export default function CategoryPage() {
   const params = useParams();
   const router = useRouter();
-  const slug = params.slug as string;
-  const category = useMemo(() => getCategoryBySlug(slug), [slug]);
+  const { categories, loading: categoriesLoading } = useCategories();
 
-  const [showFilter, setShowFilter] = useState(false);
-  const [sortBy, setSortBy] = useState("newest");
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [subCategory, setSubCategory] = useState('');
+
+  const slug = params.slug as string;
+  const category = categories.find((c) => c.slug === slug);
 
   useEffect(() => {
+    if (categoriesLoading) return;
     if (!category) {
-      setLoading(false);
+      router.push('/explore');
       return;
     }
+    loadPosts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categoriesLoading, category?.db_name, subCategory]);
 
-    let cancelled = false;
+  const loadPosts = async () => {
+    if (!category) return;
+    setLoading(true);
+    try {
+      const data = await postsAPI.getPosts({
+        category: category.db_name,
+        search: subCategory || undefined,
+      });
+      setPosts(data.posts || []);
+    } catch (error) {
+      console.error('خطا:', error);
+      setPosts([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    (async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const data = await postsAPI.getPosts({
-          category: category.dbName,          // ✅ مقدار دیتابیس
-          sort: SORT_MAP[sortBy] || "newest",
-          page: 1,
-          limit: 50,
-        });
-        if (!cancelled) setPosts(data.posts || []);
-      } catch (err: any) {
-        if (!cancelled) {
-          setError(err.message || "خطا در بارگذاری آگهی‌ها");
-          setPosts([]);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
+  const formatTimeAgo = (date: string) => {
+    const diff = Date.now() - new Date(date).getTime();
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    if (hours < 1) return 'لحظاتی پیش';
+    if (hours < 24) return `${hours} ساعت پیش`;
+    const days = Math.floor(hours / 24);
+    if (days < 30) return `${days} روز پیش`;
+    return `${Math.floor(days / 30)} ماه پیش`;
+  };
 
-    return () => {
-      cancelled = true;
-    };
-  }, [slug, sortBy, category]);
-
-  if (!category) {
+  if (categoriesLoading || !category) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <p className="text-2xl mb-4">❌</p>
-          <p className="text-gray-600">دسته‌بندی یافت نشد</p>
-          <button onClick={() => router.back()} className="mt-4 text-blue-600">
-            بازگشت
-          </button>
+          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="mt-4 text-gray-600 text-sm">در حال بارگذاری...</p>
         </div>
       </div>
     );
   }
 
-  const formatTimeAgo = (date: string) => {
-    const diff = Date.now() - new Date(date).getTime();
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    if (hours < 1) return "لحظاتی پیش";
-    if (hours < 24) return `${hours} ساعت پیش`;
-    return `${Math.floor(hours / 24)} روز پیش`;
-  };
-
-  const handleApplyFilter = (values: FilterValues) => {
-    // چون API هنوز فیلتر پیشرفته ندارد، فقط لاگ می‌کنیم
-    // در فاز بعدی می‌توانید به API پاس بدهید
-    console.log("Filter values:", values);
-  };
-
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
-      <div className="bg-white shadow-sm sticky top-0 z-10">
+      {/* هدر */}
+      <div className="bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-sm sticky top-0 z-20">
         <div className="px-4 py-3 flex items-center gap-3">
-          <button onClick={() => router.back()} className="text-gray-600 text-2xl">←</button>
-          <div className="flex-1 flex items-center gap-2">
-            <span className="text-2xl">{category.icon}</span>
-            <h1 className="text-lg font-bold">{category.name}</h1>
-          </div>
           <button
-            onClick={() => setShowFilter(true)}
-            className="bg-gray-100 px-4 py-2 rounded-lg text-sm"
+            onClick={() => router.back()}
+            className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-100 active:scale-95 transition-all"
           >
-            🔍 فیلتر
+            <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
           </button>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="text-2xl">{category.icon}</span>
+              <h1 className="text-base font-bold text-gray-800 truncate">{category.name}</h1>
+            </div>
+            {category.description && (
+              <p className="text-[11px] text-gray-500 truncate">{category.description}</p>
+            )}
+          </div>
         </div>
 
-        <div className="flex gap-2 px-4 pb-3 overflow-x-auto hide-scrollbar">
-          {[
-            { id: "newest", label: "جدیدترین" },
-            { id: "price-asc", label: "ارزان‌ترین" },
-            { id: "price-desc", label: "گران‌ترین" },
-            { id: "most-viewed", label: "پربازدیدترین" },
-          ].map((option) => (
-            <button
-              key={option.id}
-              onClick={() => setSortBy(option.id)}
-              className={`px-4 py-1.5 rounded-full text-sm whitespace-nowrap transition ${
-                sortBy === option.id
-                  ? `bg-${category.color}-600 text-white`
-                  : "bg-gray-100 text-gray-700"
-              }`}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
+        {/* زیردسته‌ها */}
+        {category.sub.length > 0 && (
+          <div className="px-4 pb-3">
+            <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
+              <button
+                onClick={() => setSubCategory('')}
+                className={`px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all active:scale-95 shrink-0 ${
+                  subCategory === ''
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/30'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                همه
+              </button>
+              {category.sub.map((sub) => (
+                <button
+                  key={sub}
+                  onClick={() => setSubCategory(sub === subCategory ? '' : sub)}
+                  className={`px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all active:scale-95 shrink-0 ${
+                    subCategory === sub
+                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/30'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {sub}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
-      <div className="px-4 pt-4 pb-2">
-        <p className="text-sm text-gray-500">
-          {loading ? "در حال بارگذاری..." : `${posts.length} آگهی در ${category.name}`}
-        </p>
-      </div>
+      {/* لیست آگهی‌ها */}
+      <div className="p-4">
+        {!loading && (
+          <p className="text-xs text-gray-500 mb-3">
+            <span className="font-bold text-gray-800">{posts.length}</span> آگهی یافت شد
+          </p>
+        )}
 
-      <div className="px-4">
         {loading ? (
           <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="bg-white rounded-lg p-4 flex gap-3 animate-pulse">
-                <div className="w-20 h-20 bg-gray-200 rounded-md" />
-                <div className="flex-1">
-                  <div className="h-5 bg-gray-200 rounded w-3/4 mb-2" />
-                  <div className="h-4 bg-gray-200 rounded w-1/2" />
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="bg-white rounded-2xl p-4 shadow-sm animate-pulse">
+                <div className="flex gap-3">
+                  <div className="w-20 h-20 bg-gray-200 rounded-xl shrink-0" />
+                  <div className="flex-1">
+                    <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
+                    <div className="h-3 bg-gray-100 rounded w-1/2" />
+                  </div>
                 </div>
               </div>
             ))}
           </div>
-        ) : error ? (
-          <div className="text-center py-10 text-red-500">{error}</div>
-        ) : posts.length === 0 ? (
-          <div className="text-center py-16 text-gray-500">
-            <p className="text-4xl mb-3">📭</p>
-            <p className="font-semibold">هنوز آگهی‌ای در این دسته ثبت نشده</p>
-            <button
-              onClick={() => router.push("/create")}
-              className="mt-4 text-blue-600 text-sm"
-            >
-              + ثبت اولین آگهی
-            </button>
+        ) : posts.length > 0 ? (
+          <div className="space-y-3">
+            {posts.map((post) => (
+              <PostCard
+                key={post.id}
+                id={post.id}
+                title={post.title}
+                price={post.price}
+                category={post.category}
+                location={post.location || 'آنلاین'}
+                timeAgo={formatTimeAgo(post.created_at)}
+              />
+            ))}
           </div>
         ) : (
-          posts.map((post) => (
-            <PostCard
-              key={post.id}
-              id={post.id}
-              title={post.title}
-              price={post.price}
-              category={post.category}          // PostCard خودش تبدیل می‌کند
-              location={post.location || "آنلاین"}
-              timeAgo={formatTimeAgo(post.created_at)}
-            />
-          ))
+          <div className="bg-white rounded-2xl p-10 text-center shadow-sm mt-4">
+            <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-blue-50 to-purple-100 flex items-center justify-center text-4xl">
+              📭
+            </div>
+            <p className="text-gray-700 font-semibold mb-1">آگهی‌ای در این دسته وجود ندارد</p>
+            <p className="text-sm text-gray-500 mb-5">
+              {subCategory ? `در «${subCategory}» آگهی‌ای یافت نشد` : 'اولین آگهی را ثبت کنید!'}
+            </p>
+            <Link
+              href="/create-post"
+              className="inline-block bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-2.5 rounded-xl font-semibold text-sm shadow-lg"
+            >
+              ثبت آگهی جدید
+            </Link>
+          </div>
         )}
       </div>
 
-      <FilterModal
-        isOpen={showFilter}
-        onClose={() => setShowFilter(false)}
-        categorySlug={category.slug}
-        onApply={handleApplyFilter}
-      />
+      <style>{`
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
     </div>
   );
 }
