@@ -14,7 +14,7 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: "فریلنسرکار | دیوار خدمات آنلاین",
-  description: "بازار کارهای مجازی مثل برنامه‌نویسی، تحقیق، ترجمه",
+  description: "بازار کارهای مجازی مثل برنامه نویسی، تحقیق، ترجمه ، خدمات دانشجویی ",
   manifest: "/manifest.json",
   appleWebApp: { capable: true, statusBarStyle: "default", title: "فریلنسرکار" },
   icons: {
