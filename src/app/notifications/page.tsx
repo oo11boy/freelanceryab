@@ -82,16 +82,20 @@ export default function NotificationsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, authLoading]);
 
-  const loadNotifications = async () => {
-    try {
-      const data = await notificationsAPI.getNotifications(50);
-      setNotifications(data.notifications || []);
-    } catch (error) {
-      console.error('خطا:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+ const loadNotifications = async () => {
+  try {
+    const data = await notificationsAPI.getNotifications(50);
+    // 🔑 اعلان‌های مربوط به پیام را حذف کن
+    const filtered = (data.notifications || []).filter(
+      (n: Notification) => n.type !== 'message'
+    );
+    setNotifications(filtered);
+  } catch (error) {
+    console.error('خطا:', error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const markAsRead = async (id: number) => {
     try {

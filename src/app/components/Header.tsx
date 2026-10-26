@@ -139,32 +139,38 @@ export default function Header({ className = "" }: HeaderProps) {
                 ثبت آگهی
               </Link>
 
-              {/* 🔑 دکمه پیام‌ها (فقط دسکتاپ) + badge */}
-              <Link
-                href="/messages"
-                className={`relative hidden lg:flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-all active:scale-95 ${
-                  isMessagesActive
-                    ? "bg-blue-50 text-blue-700"
-                    : "text-gray-700 hover:bg-gray-100"
-                }`}
-                aria-label={`پیام‌ها${unreadMessages > 0 ? ` (${unreadMessages} خوانده نشده)` : ""}`}
-              >
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                  />
-                </svg>
-                پیام‌ها
-       
-              </Link>
+     {/* 🔑 دکمه پیام‌ها (فقط دسکتاپ) + badge */}
+<Link
+  href="/messages"
+  className={`relative hidden lg:flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-all active:scale-95 ${
+    isMessagesActive
+      ? "bg-blue-50 text-blue-700"
+      : "text-gray-700 hover:bg-gray-100"
+  }`}
+  aria-label={`پیام‌ها${unreadMessages > 0 ? ` (${unreadMessages} خوانده نشده)` : ""}`}
+>
+  <div className="relative">
+    <svg
+      className="w-4 h-4"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+      />
+    </svg>
+    {unreadMessages > 0 && (
+      <span className="absolute -top-1.5 -right-2 min-w-[16px] h-[16px] px-1 bg-gradient-to-br from-red-500 to-rose-600 text-white text-[9px] font-bold rounded-full flex items-center justify-center border-2 border-white shadow-md">
+        {unreadMessages > 9 ? "9+" : unreadMessages}
+      </span>
+    )}
+  </div>
+  پیام‌ها
+</Link>
 
               {/* اعلانات (آیکون + badge) */}
               <Link
