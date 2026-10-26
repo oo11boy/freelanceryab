@@ -1,6 +1,6 @@
 // app/messages/page.tsx
 'use client';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/app/hooks/useAuth';
 import { useUILayout } from '@/app/hooks/useUILayout';
@@ -71,13 +71,18 @@ function MessagesContent() {
   const [postTitleForChat, setPostTitleForChat] = useState<string | null>(null);
   const [showRating, setShowRating] = useState(false);
 
-  const chatContainerRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const selectedChatRef = useRef<number | null>(null);
   const postIdRef = useRef<number | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const initializedFromUrl = useRef(false);
+
+  // Polling refs (fallback)
+  const contractPollRef = useRef<NodeJS.Timeout | null>(null);
+  const lastContractStatusRef = useRef<string | null>(null);
+  const lastPostStatusRef = useRef<string | null>(null);
+  const isVisibleRef = useRef<boolean>(true);
 
   useEffect(() => {
     selectedChatRef.current = selectedChat;
@@ -92,6 +97,17 @@ function MessagesContent() {
     return () => setHideBottomNav(false);
   }, [selectedChat, setHideBottomNav]);
 
+  useEffect(() => {
+    const handleVisibility = () => {
+      isVisibleRef.current = !document.hidden;
+    };
+    isVisibleRef.current = !document.hidden;
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, []);
+
   // VisualViewport
   useEffect(() => {
     if (!selectedChat) return;
@@ -99,12 +115,10 @@ function MessagesContent() {
     if (!vv) return;
 
     const onResize = () => {
-      const container = chatContainerRef.current;
+      const container = messagesContainerRef.current;
       if (container) {
-        container.style.height = `${vv.height}px`;
-        container.style.top = `${vv.offsetTop}px`;
+        container.scrollTo({ top: container.scrollHeight, behavior: 'auto' });
       }
-      scrollToBottom('auto');
     };
 
     vv.addEventListener('resize', onResize);
@@ -114,11 +128,6 @@ function MessagesContent() {
     return () => {
       vv.removeEventListener('resize', onResize);
       vv.removeEventListener('scroll', onResize);
-      const container = chatContainerRef.current;
-      if (container) {
-        container.style.height = '';
-        container.style.top = '';
-      }
     };
   }, [selectedChat]);
 
@@ -129,7 +138,79 @@ function MessagesContent() {
     }
   };
 
+  const reloadContract = async (
+    postId: number,
+    otherUserId: number,
+    force: boolean = false
+  ) => {
+    try {
+      const data = await contractsAPI.get(postId, otherUserId);
+      const newStatus = data.contract?.status || null;
+      const newPostStatus = data.postStatus || null;
+
+      if (
+        !force &&
+        newStatus === lastContractStatusRef.current &&
+        newPostStatus === lastPostStatusRef.current
+      ) {
+        return;
+      }
+
+      lastContractStatusRef.current = newStatus;
+      lastPostStatusRef.current = newPostStatus;
+
+      setContractData({
+        contract: data.contract,
+        myReview: data.myReview,
+        otherReview: data.otherReview,
+        role: data.role,
+        postOwnerId: data.postOwnerId,
+        postStatus: data.postStatus,
+      });
+    } catch (error) {
+      // silent
+    }
+  };
+
+  // ===================================================
+  // Polling قرارداد — فقط وقتی socket قطع است
+  // ===================================================
+  useEffect(() => {
+    if (contractPollRef.current) {
+      clearInterval(contractPollRef.current);
+      contractPollRef.current = null;
+    }
+
+    if (!selectedChat || !postIdForChat) return;
+
+    // اول فوری
+    reloadContract(postIdForChat, selectedChat, true);
+
+    // اگه socket وصله، polling لازم نیست
+    if (isConnected) return;
+
+    contractPollRef.current = setInterval(() => {
+      if (!isVisibleRef.current) return;
+      if (!selectedChatRef.current || !postIdRef.current) return;
+      reloadContract(postIdRef.current, selectedChatRef.current);
+    }, 8000);
+
+    return () => {
+      if (contractPollRef.current) {
+        clearInterval(contractPollRef.current);
+        contractPollRef.current = null;
+      }
+    };
+  }, [selectedChat, postIdForChat, isConnected]);
+
+  useEffect(() => {
+    lastContractStatusRef.current = null;
+    lastPostStatusRef.current = null;
+  }, [selectedChat, postIdForChat]);
+
+  // ===================================================
   // Socket
+  // ===================================================
   useEffect(() => {
     if (authLoading) return;
     if (!token) {
@@ -246,7 +327,22 @@ function MessagesContent() {
 
     const onMessageError = (data: { error: string }) => {
       console.error('Message error:', data.error);
-      alert(data.error);
+    };
+
+    const onContractEvent = (data: any) => {
+      const myId = user?.id;
+      const currentChat = selectedChatRef.current;
+      const currentPostId = postIdRef.current;
+
+      if (!currentChat || !currentPostId) return;
+
+      const isMyEvent =
+        (data.clientId === myId || data.freelancerId === myId) &&
+        data.postId === currentPostId;
+
+      if (!isMyEvent) return;
+
+      reloadContract(currentPostId, currentChat, true);
     };
 
     socket.on('connect', onConnect);
@@ -260,6 +356,7 @@ function MessagesContent() {
     socket.on('user_offline', onUserOffline);
     socket.on('user_typing', onUserTyping);
     socket.on('message_error', onMessageError);
+    socket.on('contract_event', onContractEvent);
 
     if (socket.connected) setIsConnected(true);
 
@@ -277,6 +374,7 @@ function MessagesContent() {
       socket.off('user_offline', onUserOffline);
       socket.off('user_typing', onUserTyping);
       socket.off('message_error', onMessageError);
+      socket.off('contract_event', onContractEvent);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, authLoading, user?.id]);
@@ -302,7 +400,6 @@ function MessagesContent() {
       setConversations(data.conversations || []);
       return data.conversations || [];
     } catch (error) {
-      console.error('خطا در بارگذاری مکالمات:', error);
       return [];
     }
   };
@@ -318,7 +415,7 @@ function MessagesContent() {
         socket.emit('mark_conversation_read', { sender_id: userId });
       }
     } catch (error) {
-      console.error('خطا در بارگذاری پیام‌ها:', error);
+      // silent
     } finally {
       setLoading(false);
     }
@@ -331,6 +428,8 @@ function MessagesContent() {
     }
     try {
       const data = await contractsAPI.get(postIdForChat, selectedChat);
+      lastContractStatusRef.current = data.contract?.status || null;
+      lastPostStatusRef.current = data.postStatus || null;
       setContractData({
         contract: data.contract,
         myReview: data.myReview,
@@ -340,7 +439,7 @@ function MessagesContent() {
         postStatus: data.postStatus,
       });
     } catch (error) {
-      console.error('خطا در بارگذاری قرارداد:', error);
+      // silent
     }
   };
 
@@ -353,7 +452,6 @@ function MessagesContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedChat, postIdForChat]);
 
-  // باز کردن چت از URL
   useEffect(() => {
     if (initializedFromUrl.current) return;
     if (conversations.length === 0) return;
@@ -369,7 +467,8 @@ function MessagesContent() {
     if (isNaN(userIdNum)) return;
 
     const conv = conversations.find(
-      (c) => c.user_id === userIdNum && (c.post_id ?? null) === (postIdNum ?? null)
+      (c) =>
+        c.user_id === userIdNum && (c.post_id ?? null) === (postIdNum ?? null)
     );
 
     if (conv) {
@@ -385,6 +484,8 @@ function MessagesContent() {
     setPostIdForChat(conv.post_id);
     setPostTitleForChat(conv.post_title || null);
     setContractData(EMPTY_CONTRACT);
+    lastContractStatusRef.current = null;
+    lastPostStatusRef.current = null;
     await loadMessages(conv.user_id, conv.post_id);
   };
 
@@ -426,7 +527,6 @@ function MessagesContent() {
       socket?.emit('typing', { receiver_id: selectedChat, is_typing: false });
       inputRef.current?.focus();
     } catch (error) {
-      console.error('خطا:', error);
       alert('خطا در ارسال پیام');
     } finally {
       setSending(false);
@@ -520,32 +620,21 @@ function MessagesContent() {
     <div className="min-h-screen bg-gray-50">
       {selectedChat && currentChat ? (
         <div
-          ref={chatContainerRef}
           className="fixed inset-x-0 top-0 flex flex-col bg-gradient-to-b from-blue-50 via-gray-50 to-gray-50 z-30"
           style={{
             height: '100dvh',
             paddingBottom: 'env(safe-area-inset-bottom)',
           }}
         >
-          {/* هدر چت */}
+          {/* هدر */}
           <div className="bg-white/95 backdrop-blur-md border-b border-gray-200 px-3 py-3 flex items-center gap-2 shrink-0 shadow-sm">
             <button
               onClick={handleBack}
               className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-100 active:scale-95 transition-all"
               aria-label="بازگشت"
             >
-              <svg
-                className="w-6 h-6 text-gray-700"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 5l7 7-7 7"
-                />
+              <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
             </button>
             <div className="relative">
@@ -565,18 +654,9 @@ function MessagesContent() {
                   <span className="text-blue-600 font-medium flex items-center gap-1">
                     در حال نوشتن
                     <span className="flex gap-0.5">
-                      <span
-                        className="w-1 h-1 bg-blue-600 rounded-full animate-bounce"
-                        style={{ animationDelay: '0ms' }}
-                      />
-                      <span
-                        className="w-1 h-1 bg-blue-600 rounded-full animate-bounce"
-                        style={{ animationDelay: '150ms' }}
-                      />
-                      <span
-                        className="w-1 h-1 bg-blue-600 rounded-full animate-bounce"
-                        style={{ animationDelay: '300ms' }}
-                      />
+                      <span className="w-1 h-1 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <span className="w-1 h-1 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <span className="w-1 h-1 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                     </span>
                   </span>
                 ) : currentChat.online ? (
@@ -586,29 +666,23 @@ function MessagesContent() {
                 )}
               </div>
             </div>
-
+            <div
+              className={`w-2 h-2 rounded-full shrink-0 ${
+                isConnected ? 'bg-green-500' : 'bg-red-500 animate-pulse'
+              }`}
+              title={isConnected ? 'متصل' : 'قطع'}
+            />
             <button
               onClick={() => router.push(`/user/${currentChat.user_id}`)}
               className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-100 active:scale-95 transition-all shrink-0"
               aria-label="مشاهده پروفایل"
             >
-              <svg
-                className="w-5 h-5 text-gray-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                />
+              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
             </button>
           </div>
 
-          {/* نوار عنوان پروژه */}
           {postTitleForChat && (
             <div className="bg-blue-600/95 backdrop-blur-md border-b border-blue-700 px-3 py-2 shrink-0">
               <div className="flex items-center gap-2">
@@ -626,7 +700,6 @@ function MessagesContent() {
             </div>
           )}
 
-          {/* نوار قرارداد */}
           {postIdForChat && (
             <ContractBar
               contract={contractData.contract}
@@ -641,7 +714,6 @@ function MessagesContent() {
             />
           )}
 
-          {/* پیام‌ها */}
           <div
             ref={messagesContainerRef}
             className="flex-1 min-h-0 overflow-y-auto px-3 py-4 space-y-2"
@@ -677,11 +749,7 @@ function MessagesContent() {
                           <div className="flex-1 h-px bg-gray-200" />
                         </div>
                       )}
-                      <div
-                        className={`flex items-end gap-1.5 ${
-                          isMe ? 'justify-end' : 'justify-start'
-                        }`}
-                      >
+                      <div className={`flex items-end gap-1.5 ${isMe ? 'justify-end' : 'justify-start'}`}>
                         {!isMe && (
                           <div className="w-7 shrink-0">
                             {showAvatar ? (
@@ -703,20 +771,10 @@ function MessagesContent() {
                           <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
                             {msg.text || msg.message}
                           </p>
-                          <div
-                            className={`flex items-center justify-end gap-1 mt-1 text-[10px] ${
-                              isMe ? 'text-blue-100' : 'text-gray-400'
-                            }`}
-                          >
+                          <div className={`flex items-center justify-end gap-1 mt-1 text-[10px] ${isMe ? 'text-blue-100' : 'text-gray-400'}`}>
                             <span>{formatTime(msg.created_at)}</span>
                             {isMe && (
-                              <span
-                                className={
-                                  msg.is_read
-                                    ? 'text-blue-100'
-                                    : 'text-blue-200/70'
-                                }
-                              >
+                              <span className={msg.is_read ? 'text-blue-100' : 'text-blue-200/70'}>
                                 {msg.is_read ? '✓✓' : '✓'}
                               </span>
                             )}
@@ -733,18 +791,9 @@ function MessagesContent() {
                     </div>
                     <div className="bg-white border border-gray-100 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm">
                       <div className="flex gap-1">
-                        <span
-                          className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-                          style={{ animationDelay: '0ms' }}
-                        />
-                        <span
-                          className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-                          style={{ animationDelay: '150ms' }}
-                        />
-                        <span
-                          className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-                          style={{ animationDelay: '300ms' }}
-                        />
+                        <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                       </div>
                     </div>
                   </div>
@@ -755,17 +804,12 @@ function MessagesContent() {
                 <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center text-4xl mb-4">
                   💬
                 </div>
-                <p className="text-gray-700 font-semibold mb-1">
-                  هنوز پیامی نیست
-                </p>
-                <p className="text-sm text-gray-500">
-                  اولین پیام را شما ارسال کنید
-                </p>
+                <p className="text-gray-700 font-semibold mb-1">هنوز پیامی نیست</p>
+                <p className="text-sm text-gray-500">اولین پیام را شما ارسال کنید</p>
               </div>
             )}
           </div>
 
-          {/* ورودی پیام */}
           <div className="bg-white border-t border-gray-200 px-3 py-2.5 shadow-lg shrink-0">
             <div className="flex items-end gap-2">
               <div className="flex-1 relative">
@@ -791,11 +835,7 @@ function MessagesContent() {
                 {sending ? (
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 ) : (
-                  <svg
-                    className="w-5 h-5 rotate-180"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                  >
+                  <svg className="w-5 h-5 rotate-180" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
                   </svg>
                 )}
@@ -858,23 +898,13 @@ function MessagesContent() {
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-center gap-2 mb-0.5">
                           <div className="flex items-center gap-1.5 min-w-0">
-                            <span
-                              className={`font-semibold truncate ${
-                                conv.unread_count > 0
-                                  ? 'text-gray-900'
-                                  : 'text-gray-700'
-                              }`}
-                            >
+                            <span className={`font-semibold truncate ${conv.unread_count > 0 ? 'text-gray-900' : 'text-gray-700'}`}>
                               {conv.user_name}
                             </span>
                             {conv.post_id ? (
-                              <span className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded shrink-0 font-medium">
-                                پروژه
-                              </span>
+                              <span className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded shrink-0 font-medium">پروژه</span>
                             ) : (
-                              <span className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded shrink-0 font-medium">
-                                عمومی
-                              </span>
+                              <span className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded shrink-0 font-medium">عمومی</span>
                             )}
                           </div>
                           <span className="text-xs text-gray-400 whitespace-nowrap shrink-0">
@@ -882,25 +912,15 @@ function MessagesContent() {
                           </span>
                         </div>
                         {conv.post_title && (
-                          <p className="text-[10px] text-blue-600 truncate mb-0.5 font-medium">
-                            📋 {conv.post_title}
-                          </p>
+                          <p className="text-[10px] text-blue-600 truncate mb-0.5 font-medium">📋 {conv.post_title}</p>
                         )}
                         <div className="flex justify-between items-center gap-2">
-                          <p
-                            className={`text-sm truncate ${
-                              conv.unread_count > 0
-                                ? 'text-gray-700 font-medium'
-                                : 'text-gray-500'
-                            }`}
-                          >
+                          <p className={`text-sm truncate ${conv.unread_count > 0 ? 'text-gray-700 font-medium' : 'text-gray-500'}`}>
                             {conv.last_message}
                           </p>
                           {conv.unread_count > 0 && (
                             <div className="min-w-[22px] h-[22px] px-1.5 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 shadow">
-                              {conv.unread_count > 9
-                                ? '9+'
-                                : conv.unread_count}
+                              {conv.unread_count > 9 ? '9+' : conv.unread_count}
                             </div>
                           )}
                         </div>
@@ -914,9 +934,7 @@ function MessagesContent() {
                 <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-50 to-purple-100 flex items-center justify-center text-5xl mb-5">
                   💬
                 </div>
-                <p className="text-lg font-bold text-gray-800 mb-2">
-                  هیچ پیامی ندارید
-                </p>
+                <p className="text-lg font-bold text-gray-800 mb-2">هیچ پیامی ندارید</p>
                 <p className="text-sm text-gray-500 mb-8 leading-relaxed max-w-xs">
                   با ارسال پیام به آگهی‌ها، مکالمه خود را شروع کنید
                 </p>
@@ -941,8 +959,6 @@ function MessagesContent() {
     </div>
   );
 }
-
-import { Suspense } from 'react';
 
 function MessagesFallback() {
   return (
