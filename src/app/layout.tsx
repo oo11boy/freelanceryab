@@ -7,8 +7,9 @@ import ClientLayout from "./components/ClientLayout";
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  maximumScale: 5,     // ← اجازه zoom روی دسکتاپ
+  userScalable: true,  // ← روی دسکتاپ لازم است
+  themeColor: "#4f46e5",
 };
 
 export const metadata: Metadata = {

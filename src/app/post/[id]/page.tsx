@@ -176,27 +176,37 @@ export default function PostDetailPage() {
     }
   };
 
+  // ==================== لودینگ ====================
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 pb-24">
-        <div className="bg-white/90 backdrop-blur-md border-b border-gray-200 shadow-sm sticky top-0 z-20 px-3 py-3 flex items-center gap-2">
+      <div className="min-h-screen bg-gray-50 pb-24 lg:pb-12">
+        {/* نوار بالا موبایل */}
+        <div className="lg:hidden bg-white/90 backdrop-blur-md border-b border-gray-200 shadow-sm sticky top-0 z-20 px-3 py-3 flex items-center gap-2">
           <div className="w-10 h-10 rounded-full bg-gray-100 animate-pulse" />
           <div className="flex-1 h-5 bg-gray-200 rounded animate-pulse" />
           <div className="w-10 h-10 rounded-full bg-gray-100 animate-pulse" />
         </div>
-        <div className="p-4 space-y-4">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="bg-white rounded-2xl p-4 animate-pulse">
-              <div className="h-5 bg-gray-200 rounded w-3/4 mb-3" />
-              <div className="h-4 bg-gray-100 rounded w-1/2 mb-2" />
-              <div className="h-4 bg-gray-100 rounded w-2/3" />
+        <div className="max-w-7xl mx-auto p-4 lg:px-6 lg:mt-6">
+          <div className="lg:grid lg:grid-cols-[1fr_380px] lg:gap-6">
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="bg-white rounded-2xl p-4 lg:p-6 animate-pulse">
+                  <div className="h-5 bg-gray-200 rounded w-3/4 mb-3" />
+                  <div className="h-4 bg-gray-100 rounded w-1/2 mb-2" />
+                  <div className="h-4 bg-gray-100 rounded w-2/3" />
+                </div>
+              ))}
             </div>
-          ))}
+            <div className="hidden lg:block">
+              <div className="h-96 bg-white rounded-2xl animate-pulse" />
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
+  // ==================== پیدا نشد ====================
   if (!post) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
@@ -235,10 +245,104 @@ export default function PostDetailPage() {
   const displayCategory = categoryLabel(categories, post.category);
   const displayIcon = categoryIcon(categories, post.category);
 
+  // 🔑 وضعیت آگهی (برای استفاده در Sidebar و Footer)
+  const statusMessages: Record<string, { text: string; cls: string }> = {
+    locked: {
+      text: "🔒 این آگهی قفل شده و در حال انجامه — امکان ارسال درخواست جدید وجود ندارد",
+      cls: "bg-purple-50 border-purple-200 text-purple-800",
+    },
+    in_progress: {
+      text: "🔄 این پروژه در حال انجامه — امکان ارسال درخواست جدید وجود ندارد",
+      cls: "bg-amber-50 border-amber-200 text-amber-800",
+    },
+    delivered: {
+      text: "📦 این پروژه تحویل داده شده و منتظر تأیید کارفرماست",
+      cls: "bg-orange-50 border-orange-200 text-orange-800",
+    },
+    completed: {
+      text: "✅ این پروژه تکمیل شده",
+      cls: "bg-blue-50 border-blue-200 text-blue-800",
+    },
+    removed: {
+      text: "🗑 این آگهی حذف شده",
+      cls: "bg-gray-50 border-gray-200 text-gray-600",
+    },
+  };
+  const statusInfo =
+    post.status !== "active" ? statusMessages[post.status] : null;
+
+  // 🔑 دکمه‌های اقدام (برای موبایل footer و دسکتاپ sidebar)
+  const ActionButtons = ({ variant = "mobile" }: { variant?: "mobile" | "desktop" }) => (
+    <div className="flex gap-2">
+      <button
+        onClick={handleSave}
+        disabled={savedLoading}
+        className={`${
+          variant === "desktop" ? "w-14 h-12" : "w-14 h-12"
+        } rounded-xl flex items-center justify-center transition-all active:scale-95 ${
+          isSaved
+            ? "bg-red-50 border-2 border-red-200"
+            : "bg-gray-100 border-2 border-gray-200"
+        }`}
+        aria-label={isSaved ? "حذف از ذخیره‌ها" : "ذخیره آگهی"}
+      >
+        <svg
+          className={`w-6 h-6 ${isSaved ? "text-red-500" : "text-gray-600"}`}
+          fill={isSaved ? "currentColor" : "none"}
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+          />
+        </svg>
+      </button>
+      <button
+        onClick={() => setShowContactModal(true)}
+        className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white h-12 rounded-xl font-semibold shadow-lg shadow-blue-500/30 hover:shadow-xl active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+      >
+        <svg
+          className="w-5 h-5"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+          />
+        </svg>
+        ارتباط با آگهی‌دهنده
+      </button>
+    </div>
+  );
+
+  // 🔑 کارت قیمت (برای استفاده در صفحه اصلی + Sidebar)
+  const PriceCard = () => (
+    <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-xl p-3.5 lg:p-4 border border-emerald-100 flex items-center justify-between">
+      <div>
+        <div className="text-[10px] lg:text-xs text-emerald-700 mb-0.5">قیمت</div>
+        <div className="text-xl lg:text-2xl font-bold text-emerald-700" dir="ltr">
+          {priceLabel}
+        </div>
+      </div>
+      {priceTypeLabel && (
+        <span className="text-[10px] lg:text-xs bg-white text-emerald-700 px-2.5 py-1 rounded-full font-medium border border-emerald-200">
+          {priceTypeLabel}
+        </span>
+      )}
+    </div>
+  );
+
   return (
-    <div className="min-h-screen bg-gray-50 pb-28">
-      {/* هدر */}
-      <div className="bg-white/90 backdrop-blur-md border-b border-gray-200 shadow-sm sticky top-0 z-20">
+    <div className="min-h-screen bg-gray-50 pb-28 lg:pb-12">
+      {/* ===== نوار بالا موبایل (در دسکتاپ Header سراسری هست) ===== */}
+      <div className="lg:hidden bg-white/90 backdrop-blur-md border-b border-gray-200 shadow-sm sticky top-0 z-20">
         <div className="px-3 py-3 flex items-center gap-1">
           <button
             onClick={() => router.back()}
@@ -263,7 +367,6 @@ export default function PostDetailPage() {
             جزئیات آگهی
           </h1>
 
-          {/* دکمه گزارش */}
           {!isOwner && (
             <button
               onClick={handleReport}
@@ -316,10 +419,35 @@ export default function PostDetailPage() {
         </div>
       </div>
 
-      {/* تصاویر */}
+      {/* ===== Breadcrumb دسکتاپ ===== */}
+      <div className="hidden lg:block max-w-7xl mx-auto px-6 pt-6">
+        <nav className="flex items-center gap-2 text-sm text-gray-500">
+          <Link href="/" className="hover:text-blue-600 transition-colors">
+            خانه
+          </Link>
+          <span className="text-gray-300">/</span>
+          <Link href="/explore" className="hover:text-blue-600 transition-colors">
+            جستجوی پروژه
+          </Link>
+          <span className="text-gray-300">/</span>
+          <Link
+            href={`/explore?category=${encodeURIComponent(post.category)}`}
+            className="hover:text-blue-600 transition-colors"
+          >
+            {displayCategory}
+          </Link>
+          <span className="text-gray-300">/</span>
+          <span className="text-gray-700 font-medium truncate max-w-xs">
+            {post.title}
+          </span>
+        </nav>
+      </div>
+
+      {/* ===== تصاویر ===== */}
       {post.images && post.images.length > 0 && (
-        <div className="bg-white border-b border-gray-100">
-          <div className="flex gap-2 p-4 overflow-x-auto hide-scrollbar">
+        <div className="bg-white border-b border-gray-100 lg:border-0 lg:bg-transparent lg:max-w-7xl lg:mx-auto lg:px-6 lg:pt-6">
+          {/* موبایل: اسکرول افقی */}
+          <div className="lg:hidden flex gap-2 p-4 overflow-x-auto hide-scrollbar">
             {post.images.map((img, idx) => (
               <div
                 key={idx}
@@ -338,98 +466,237 @@ export default function PostDetailPage() {
               </div>
             ))}
           </div>
+
+          {/* دسکتاپ: گرید */}
+          <div className="hidden lg:grid grid-cols-3 gap-3">
+            {post.images.map((img, idx) => (
+              <div
+                key={idx}
+                className={`relative ${
+                  idx === 0 ? "col-span-2 row-span-2 h-[420px]" : "h-[204px]"
+                } bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl overflow-hidden`}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={img}
+                  alt={`تصویر ${idx + 1}`}
+                  className="w-full h-full object-cover absolute inset-0"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = "none";
+                  }}
+                />
+                <span className="text-5xl absolute inset-0 flex items-center justify-center">
+                  🖼️
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
-      <div className="p-4 space-y-4">
-        {/* کارت اصلی */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-          <Link
-            href={`/explore?category=${encodeURIComponent(post.category)}`}
-            className="inline-flex items-center gap-1.5 bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-medium mb-3 hover:bg-blue-100 transition-colors"
-          >
-            <span>{displayIcon}</span>
-            {displayCategory}
-            {post.sub_category && (
-              <>
-                <span className="text-blue-400">•</span>
-                <span>{post.sub_category}</span>
-              </>
-            )}
-          </Link>
+      {/* ===== محتوا ===== */}
+      <div className="max-w-7xl mx-auto lg:px-6 lg:mt-6">
+        <div className="lg:grid lg:grid-cols-[1fr_380px] lg:gap-6">
 
-          <div className="flex items-start justify-between gap-3 mb-4">
-            <h1 className="text-lg font-bold text-gray-800 leading-relaxed flex-1">
-              {post.title}
-            </h1>
-            {post.status === "active" && (
-              <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-green-50 text-green-700 shrink-0 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-                فعال
-              </span>
-            )}
-            {post.status === "locked" && (
-              <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-purple-50 text-purple-700 shrink-0">
-                🔒 قفل شده
-              </span>
-            )}
-          </div>
+          {/* ===== ستون اصلی ===== */}
+          <div className="p-4 lg:p-0 space-y-4 lg:space-y-5">
+            {/* کارت اصلی */}
+            <div className="bg-white rounded-2xl p-5 lg:p-6 shadow-sm border border-gray-100">
+              <Link
+                href={`/explore?category=${encodeURIComponent(post.category)}`}
+                className="inline-flex items-center gap-1.5 bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-medium mb-3 hover:bg-blue-100 transition-colors"
+              >
+                <span>{displayIcon}</span>
+                {displayCategory}
+                {post.sub_category && (
+                  <>
+                    <span className="text-blue-400">•</span>
+                    <span>{post.sub_category}</span>
+                  </>
+                )}
+              </Link>
 
-          <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-xl p-3.5 border border-emerald-100 flex items-center justify-between">
-            <div>
-              <div className="text-[10px] text-emerald-700 mb-0.5">قیمت</div>
-              <div className="text-xl font-bold text-emerald-700" dir="ltr">
-                {priceLabel}
+              <div className="flex items-start justify-between gap-3 mb-4">
+                <h1 className="text-lg lg:text-2xl font-bold text-gray-800 leading-relaxed flex-1">
+                  {post.title}
+                </h1>
+                {post.status === "active" && (
+                  <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-green-50 text-green-700 shrink-0 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                    فعال
+                  </span>
+                )}
+                {post.status === "locked" && (
+                  <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-purple-50 text-purple-700 shrink-0">
+                    🔒 قفل شده
+                  </span>
+                )}
+              </div>
+
+              {/* قیمت — در دسکتاپ در Sidebar نمایش داده می‌شود، این نسخه فقط موبایل */}
+              <div className="lg:hidden">
+                <PriceCard />
+              </div>
+
+              <div className="flex items-center gap-4 mt-4 pt-4 border-t border-gray-100 text-xs lg:text-sm text-gray-500 flex-wrap">
+                <span className="flex items-center gap-1">
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                  {formatRelativeDate(post.created_at)}
+                </span>
+                <span className="flex items-center gap-1">
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                    />
+                  </svg>
+                  {post.views} بازدید
+                </span>
+                {post.location && (
+                  <span className="flex items-center gap-1">
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                      />
+                    </svg>
+                    {post.location}
+                  </span>
+                )}
               </div>
             </div>
-            {priceTypeLabel && (
-              <span className="text-[10px] bg-white text-emerald-700 px-2.5 py-1 rounded-full font-medium border border-emerald-200">
-                {priceTypeLabel}
-              </span>
-            )}
-          </div>
 
-          <div className="flex items-center gap-4 mt-4 pt-4 border-t border-gray-100 text-xs text-gray-500">
-            <span className="flex items-center gap-1">
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+            {/* مهلت */}
+            {post.deadline && (
+              <div className="bg-white rounded-2xl p-4 lg:p-5 shadow-sm border border-gray-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-100 to-amber-100 flex items-center justify-center text-2xl shrink-0">
+                    ⏳
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs text-gray-500 mb-0.5">مهلت انجام</div>
+                    <div className="font-bold text-gray-800 text-sm lg:text-base">
+                      {formatDeadline(post.deadline)}
+                    </div>
+                    {deadlineStatus && (
+                      <div
+                        className={`text-xs mt-0.5 font-medium ${deadlineStatus.color}`}
+                      >
+                        {deadlineStatus.label}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* توضیحات */}
+            <div className="bg-white rounded-2xl p-5 lg:p-6 shadow-sm border border-gray-100">
+              <h2 className="font-bold mb-3 text-gray-800 flex items-center gap-2 lg:text-lg">
+                <span>📝</span> توضیحات
+              </h2>
+              <p className="text-gray-700 whitespace-pre-line leading-relaxed text-sm lg:text-base">
+                {post.description}
+              </p>
+            </div>
+
+            {/* مهارت‌ها */}
+            {post.skills && post.skills.length > 0 && (
+              <div className="bg-white rounded-2xl p-5 lg:p-6 shadow-sm border border-gray-100">
+                <h2 className="font-bold mb-3 text-gray-800 flex items-center gap-2 lg:text-lg">
+                  <span>🎯</span> مهارت‌های مورد نیاز
+                </h2>
+                <div className="flex flex-wrap gap-2">
+                  {post.skills.map((skill, idx) => (
+                    <span
+                      key={idx}
+                      className="bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 border border-blue-200 px-3 py-1.5 rounded-lg text-sm font-medium"
+                    >
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* آگهی‌دهنده — موبایل */}
+            <div className="lg:hidden bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-lg text-white font-bold shadow-md shrink-0">
+                  {ownerName.charAt(0)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs text-gray-500 mb-0.5">آگهی‌دهنده</div>
+                  <div className="font-bold text-gray-800 text-sm truncate">
+                    {ownerName}
+                  </div>
+                </div>
+                <Link
+                  href={`/user/${owner?.id || post.user_id}`}
+                  className="w-9 h-9 rounded-full flex items-center justify-center bg-gray-50 hover:bg-blue-50 text-gray-500 hover:text-blue-600 active:scale-90 transition-all shrink-0"
+                  aria-label="مشاهده پروفایل"
+                >
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 19l-7-7 7-7"
+                    />
+                  </svg>
+                </Link>
+              </div>
+            </div>
+
+            {/* دکمه گزارش زیرین */}
+            {!isOwner && (
+              <button
+                onClick={handleReport}
+                className="w-full flex items-center justify-center gap-2 text-xs text-red-600 font-semibold py-3 rounded-xl border-2 border-red-100 bg-red-50/50 hover:bg-red-50 active:scale-[0.98] transition-all"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-              {formatRelativeDate(post.created_at)}
-            </span>
-            <span className="flex items-center gap-1">
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                />
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                />
-              </svg>
-              {post.views} بازدید
-            </span>
-            {post.location && (
-              <span className="flex items-center gap-1">
                 <svg
                   className="w-4 h-4"
                   fill="none"
@@ -440,287 +707,188 @@ export default function PostDetailPage() {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                  />
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                    d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9"
                   />
                 </svg>
-                {post.location}
-              </span>
+                گزارش این آگهی
+              </button>
             )}
-          </div>
-        </div>
 
-        {/* مهلت */}
-        {post.deadline && (
-          <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-100 to-amber-100 flex items-center justify-center text-2xl shrink-0">
-                ⏳
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-xs text-gray-500 mb-0.5">مهلت انجام</div>
-                <div className="font-bold text-gray-800 text-sm">
-                  {formatDeadline(post.deadline)}
+            {/* هشدار امنیتی */}
+            <div className="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-200 rounded-2xl p-4 lg:p-5 shadow-sm">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-2xl shrink-0">
+                  🛡️
                 </div>
-                {deadlineStatus && (
-                  <div
-                    className={`text-xs mt-0.5 font-medium ${deadlineStatus.color}`}
-                  >
-                    {deadlineStatus.label}
-                  </div>
-                )}
+                <div className="flex-1">
+                  <h3 className="font-bold text-amber-900 text-sm mb-2 flex items-center gap-1">
+                    هشدار امنیتی
+                  </h3>
+                  <ul className="space-y-1.5 text-xs lg:text-sm text-amber-800 leading-relaxed">
+                    <li className="flex items-start gap-1.5">
+                      <span className="text-amber-500 shrink-0">•</span>
+                      <span>
+                        هرگز قبل از انجام و تحویل کار، مبلغی پرداخت نکنید.
+                      </span>
+                    </li>
+                    <li className="flex items-start gap-1.5">
+                      <span className="text-amber-500 shrink-0">•</span>
+                      <span>
+                        برای ارتباط و پرداخت، فقط از طریق همین پلتفرم اقدام کنید.
+                      </span>
+                    </li>
+                    <li className="flex items-start gap-1.5">
+                      <span className="text-amber-500 shrink-0">•</span>
+                      <span>
+                        به درخواست‌های واریز به حساب‌های شخصی یا لینک‌های خارجی
+                        اعتماد نکنید.
+                      </span>
+                    </li>
+                    <li className="flex items-start gap-1.5">
+                      <span className="text-amber-500 shrink-0">•</span>
+                      <span>
+                        در صورت مشاهده هرگونه تخلف، از طریق پشتیبانی گزارش دهید.
+                      </span>
+                    </li>
+                  </ul>
+                </div>
               </div>
             </div>
-          </div>
-        )}
 
-        {/* توضیحات */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-          <h2 className="font-bold mb-3 text-gray-800 flex items-center gap-2">
-            <span>📝</span> توضیحات
-          </h2>
-          <p className="text-gray-700 whitespace-pre-line leading-relaxed text-sm">
-            {post.description}
-          </p>
-        </div>
-
-        {/* مهارت‌ها */}
-        {post.skills && post.skills.length > 0 && (
-          <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-            <h2 className="font-bold mb-3 text-gray-800 flex items-center gap-2">
-              <span>🎯</span> مهارت‌های مورد نیاز
-            </h2>
-            <div className="flex flex-wrap gap-2">
-              {post.skills.map((skill, idx) => (
-                <span
-                  key={idx}
-                  className="bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 border border-blue-200 px-3 py-1.5 rounded-lg text-sm font-medium"
-                >
-                  {skill}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* آگهی‌دهنده */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-lg text-white font-bold shadow-md shrink-0">
-              {ownerName.charAt(0)}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-xs text-gray-500 mb-0.5">آگهی‌دهنده</div>
-              <div className="font-bold text-gray-800 text-sm truncate">
-                {ownerName}
-              </div>
-            </div>
-            <Link
-              href={`/user/${owner?.id || post.user_id}`}
-              className="w-9 h-9 rounded-full flex items-center justify-center bg-gray-50 hover:bg-blue-50 text-gray-500 hover:text-blue-600 active:scale-90 transition-all shrink-0"
-              aria-label="مشاهده پروفایل"
-            >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+            <div className="text-center pb-2">
+              <Link
+                href="/rules"
+                className="text-xs text-blue-600 hover:underline inline-flex items-center gap-1"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15 19l-7-7 7-7"
-                />
-              </svg>
-            </Link>
-          </div>
-        </div>
-
-        {/* دکمه گزارش زیرین */}
-        {!isOwner && (
-          <button
-            onClick={handleReport}
-            className="w-full flex items-center justify-center gap-2 text-xs text-red-600 font-semibold py-3 rounded-xl border-2 border-red-100 bg-red-50/50 hover:bg-red-50 active:scale-[0.98] transition-all"
-          >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9"
-              />
-            </svg>
-            گزارش این آگهی
-          </button>
-        )}
-
-        {/* هشدار امنیتی */}
-        <div className="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-200 rounded-2xl p-4 shadow-sm">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-2xl shrink-0">
-              🛡️
-            </div>
-            <div className="flex-1">
-              <h3 className="font-bold text-amber-900 text-sm mb-2 flex items-center gap-1">
-                هشدار امنیتی
-              </h3>
-              <ul className="space-y-1.5 text-xs text-amber-800 leading-relaxed">
-                <li className="flex items-start gap-1.5">
-                  <span className="text-amber-500 shrink-0">•</span>
-                  <span>
-                    هرگز قبل از انجام و تحویل کار، مبلغی پرداخت نکنید.
-                  </span>
-                </li>
-                <li className="flex items-start gap-1.5">
-                  <span className="text-amber-500 shrink-0">•</span>
-                  <span>
-                    برای ارتباط و پرداخت، فقط از طریق همین پلتفرم اقدام کنید.
-                  </span>
-                </li>
-                <li className="flex items-start gap-1.5">
-                  <span className="text-amber-500 shrink-0">•</span>
-                  <span>
-                    به درخواست‌های واریز به حساب‌های شخصی یا لینک‌های خارجی
-                    اعتماد نکنید.
-                  </span>
-                </li>
-                <li className="flex items-start gap-1.5">
-                  <span className="text-amber-500 shrink-0">•</span>
-                  <span>
-                    در صورت مشاهده هرگونه تخلف، از طریق پشتیبانی گزارش دهید.
-                  </span>
-                </li>
-              </ul>
+                <span>📜</span>
+                مشاهده قوانین و مقررات کامل
+              </Link>
             </div>
           </div>
-        </div>
 
-        <div className="text-center">
-          <Link
-            href="/rules"
-            className="text-xs text-blue-600 hover:underline inline-flex items-center gap-1"
-          >
-            <span>📜</span>
-            مشاهده قوانین و مقررات کامل
-          </Link>
+          {/* ===== Sidebar دسکتاپ ===== */}
+          <aside className="hidden lg:block">
+            <div className="sticky top-24 space-y-5">
+              {/* کارت قیمت + اقدام */}
+              <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                <PriceCard />
+
+                <div className="mt-4">
+                  {!isOwner && post.status === "active" && <ActionButtons variant="desktop" />}
+                  {!isOwner && statusInfo && (
+                    <div className={`rounded-xl p-3 text-center border-2 ${statusInfo.cls}`}>
+                      <p className="text-xs font-semibold">{statusInfo.text}</p>
+                    </div>
+                  )}
+                  {isOwner && (
+                    <Link
+                      href={`/edit-post/${post.id}`}
+                      className="block w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-center py-3 rounded-xl font-semibold shadow-lg shadow-blue-500/30 hover:shadow-xl active:scale-[0.98] transition-all"
+                    >
+                      ✏️ ویرایش آگهی
+                    </Link>
+                  )}
+                </div>
+              </div>
+
+              {/* کارت آگهی‌دهنده */}
+              <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                <h3 className="text-sm font-bold text-gray-800 mb-3">آگهی‌دهنده</h3>
+                <div className="flex items-center gap-3">
+                  <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-xl text-white font-bold shadow-md shrink-0">
+                    {ownerName.charAt(0)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold text-gray-800 truncate">
+                      {ownerName}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-0.5">
+                      {formatRelativeDate(post.created_at)} عضو شده
+                    </div>
+                  </div>
+                </div>
+                <Link
+                  href={`/user/${owner?.id || post.user_id}`}
+                  className="mt-4 w-full flex items-center justify-center gap-2 bg-gray-50 hover:bg-gray-100 text-gray-700 text-sm font-semibold py-2.5 rounded-xl transition-colors"
+                >
+                  مشاهده پروفایل
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 19l-7-7 7-7"
+                    />
+                  </svg>
+                </Link>
+              </div>
+
+              {/* کارت اطلاعات سریع */}
+              <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                <h3 className="text-sm font-bold text-gray-800 mb-3">اطلاعات آگهی</h3>
+                <div className="space-y-3 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-500">تعداد بازدید</span>
+                    <span className="font-semibold text-gray-800">{post.views}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-500">تاریخ ثبت</span>
+                    <span className="font-semibold text-gray-800">{formatRelativeDate(post.created_at)}</span>
+                  </div>
+                  {post.location && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-500">موقعیت</span>
+                      <span className="font-semibold text-gray-800">{post.location}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-500">وضعیت</span>
+                    <span
+                      className={`font-semibold text-xs px-2 py-0.5 rounded-full ${
+                        post.status === "active"
+                          ? "bg-green-50 text-green-700"
+                          : "bg-gray-100 text-gray-700"
+                      }`}
+                    >
+                      {post.status === "active" ? "فعال" : post.status === "locked" ? "قفل شده" : post.status === "completed" ? "تکمیل شده" : post.status}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </aside>
         </div>
       </div>
 
-      {/* دکمه اقدام ثابت — فقط برای آگهی فعال */}
+      {/* ===== دکمه اقدام ثابت موبایل ===== */}
       {!isOwner && post.status === "active" && (
-        <div className="fixed bottom-16 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-200 p-3 max-w-md mx-auto shadow-lg z-30 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
-          <div className="flex gap-2">
-            <button
-              onClick={handleSave}
-              disabled={savedLoading}
-              className={`w-14 h-12 rounded-xl flex items-center justify-center transition-all active:scale-95 ${
-                isSaved
-                  ? "bg-red-50 border-2 border-red-200"
-                  : "bg-gray-100 border-2 border-gray-200"
-              }`}
-              aria-label={isSaved ? "حذف از ذخیره‌ها" : "ذخیره آگهی"}
-            >
-              <svg
-                className={`w-6 h-6 ${
-                  isSaved ? "text-red-500" : "text-gray-600"
-                }`}
-                fill={isSaved ? "currentColor" : "none"}
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                />
-              </svg>
-            </button>
-            <button
-              onClick={() => setShowContactModal(true)}
-              className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white h-12 rounded-xl font-semibold shadow-lg shadow-blue-500/30 hover:shadow-xl active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-            >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                />
-              </svg>
-              ارتباط با آگهی‌دهنده
-            </button>
+        <div className="lg:hidden fixed bottom-16 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-200 p-3 max-w-md mx-auto shadow-lg z-30 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+          <ActionButtons variant="mobile" />
+        </div>
+      )}
+
+      {/* ===== پیام وضعیت موبایل ===== */}
+      {!isOwner && statusInfo && (
+        <div className="lg:hidden fixed bottom-16 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-200 p-3 max-w-md mx-auto shadow-lg z-30 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+          <div className={`rounded-xl p-3 text-center border-2 ${statusInfo.cls}`}>
+            <p className="text-xs font-semibold">{statusInfo.text}</p>
           </div>
         </div>
       )}
 
-      {/* پیام وضعیت برای آگهی غیرفعال */}
-      {!isOwner && post.status !== "active" && (
-        <div className="fixed bottom-16 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-200 p-3 max-w-md mx-auto shadow-lg z-30 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
-          <div
-            className={`rounded-xl p-3 text-center border-2 ${
-              post.status === "locked"
-                ? "bg-purple-50 border-purple-200"
-                : post.status === "in_progress"
-                  ? "bg-amber-50 border-amber-200"
-                  : post.status === "delivered"
-                    ? "bg-orange-50 border-orange-200"
-                    : post.status === "completed"
-                      ? "bg-blue-50 border-blue-200"
-                      : "bg-gray-50 border-gray-200"
-            }`}
-          >
-            <p
-              className={`text-xs font-semibold flex items-center justify-center gap-1.5 ${
-                post.status === "locked"
-                  ? "text-purple-800"
-                  : post.status === "in_progress"
-                    ? "text-amber-800"
-                    : post.status === "delivered"
-                      ? "text-orange-800"
-                      : post.status === "completed"
-                        ? "text-blue-800"
-                        : "text-gray-600"
-              }`}
-            >
-              {post.status === "locked"
-                ? "🔒 این آگهی قفل شده و در حال انجامه — امکان ارسال درخواست جدید وجود ندارد"
-                : post.status === "in_progress"
-                  ? "🔄 این پروژه در حال انجامه — امکان ارسال درخواست جدید وجود ندارد"
-                  : post.status === "delivered"
-                    ? "📦 این پروژه تحویل داده شده و منتظر تأیید کارفرماست"
-                    : post.status === "completed"
-                      ? "✅ این پروژه تکمیل شده"
-                      : "🗑 این آگهی حذف شده"}
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* مودال ارسال پیام */}
+      {/* ===== مودال ارسال پیام ===== */}
       {showContactModal && (
         <div
-          className="fixed inset-0 bg-black/60 z-50 flex items-end justify-center"
+          className="fixed inset-0 bg-black/60 z-50 flex items-end lg:items-center justify-center"
           onClick={() => !sending && setShowContactModal(false)}
         >
           <div
-            className="bg-white w-full max-w-md rounded-t-3xl p-5 animate-slide-up"
+            className="bg-white w-full max-w-md rounded-t-3xl lg:rounded-3xl p-5 animate-slide-up lg:animate-fade-in"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
@@ -827,25 +995,17 @@ export default function PostDetailPage() {
 
       <style>{`
         @keyframes slide-up {
-          from {
-            transform: translateY(100%);
-            opacity: 0.5;
-          }
-          to {
-            transform: translateY(0);
-            opacity: 1;
-          }
+          from { transform: translateY(100%); opacity: 0.5; }
+          to { transform: translateY(0); opacity: 1; }
         }
-        .animate-slide-up {
-          animation: slide-up 0.3s ease-out;
+        @keyframes fade-in {
+          from { opacity: 0; transform: scale(0.98); }
+          to { opacity: 1; transform: scale(1); }
         }
-        .hide-scrollbar::-webkit-scrollbar {
-          display: none;
-        }
-        .hide-scrollbar {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
+        .animate-slide-up { animation: slide-up 0.3s ease-out; }
+        .lg\\:animate-fade-in { animation: fade-in 0.2s ease-out; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
     </div>
   );

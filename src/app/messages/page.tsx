@@ -78,7 +78,6 @@ function MessagesContent() {
   const inputRef = useRef<HTMLInputElement>(null);
   const initializedFromUrl = useRef(false);
 
-  // Polling refs (fallback)
   const contractPollRef = useRef<NodeJS.Timeout | null>(null);
   const lastContractStatusRef = useRef<string | null>(null);
   const lastPostStatusRef = useRef<string | null>(null);
@@ -108,7 +107,6 @@ function MessagesContent() {
     };
   }, []);
 
-  // VisualViewport
   useEffect(() => {
     if (!selectedChat) return;
     const vv = window.visualViewport;
@@ -172,9 +170,6 @@ function MessagesContent() {
     }
   };
 
-  // ===================================================
-  // Polling قرارداد — فقط وقتی socket قطع است
-  // ===================================================
   useEffect(() => {
     if (contractPollRef.current) {
       clearInterval(contractPollRef.current);
@@ -183,10 +178,8 @@ function MessagesContent() {
 
     if (!selectedChat || !postIdForChat) return;
 
-    // اول فوری
     reloadContract(postIdForChat, selectedChat, true);
 
-    // اگه socket وصله، polling لازم نیست
     if (isConnected) return;
 
     contractPollRef.current = setInterval(() => {
@@ -221,7 +214,18 @@ function MessagesContent() {
     const socket = initializeSocket(token);
     if (!socket) return;
 
-    const onConnect = () => setIsConnected(true);
+    // 🔑 اینجا user_id را به سرور می‌گوییم تا user_online درست emit شود
+    const joinRoom = () => {
+      if (user?.id) {
+        socket.emit('join_user_room', { user_id: user.id });
+      }
+    };
+
+    const onConnect = () => {
+      setIsConnected(true);
+      joinRoom();
+      loadConversations();
+    };
     const onDisconnect = () => setIsConnected(false);
 
     const onNewMessage = (data: Message) => {
@@ -358,7 +362,11 @@ function MessagesContent() {
     socket.on('message_error', onMessageError);
     socket.on('contract_event', onContractEvent);
 
-    if (socket.connected) setIsConnected(true);
+    // اگر همین الان وصل است
+    if (socket.connected) {
+      setIsConnected(true);
+      joinRoom();
+    }
 
     loadConversations();
 
@@ -379,7 +387,6 @@ function MessagesContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, authLoading, user?.id]);
 
-  // اسکرول خودکار
   useEffect(() => {
     if (messages.length > 0) {
       const t = setTimeout(() => scrollToBottom('smooth'), 100);
@@ -616,339 +623,463 @@ function MessagesContent() {
   const isTyping = selectedChat ? typingUsers.has(selectedChat) : false;
   const totalUnread = conversations.reduce((s, c) => s + c.unread_count, 0);
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {selectedChat && currentChat ? (
-        <div
-          className="fixed inset-x-0 top-0 flex flex-col bg-gradient-to-b from-blue-50 via-gray-50 to-gray-50 z-30"
-          style={{
-            height: '100dvh',
-            paddingBottom: 'env(safe-area-inset-bottom)',
-          }}
-        >
-          {/* هدر */}
-          <div className="bg-white/95 backdrop-blur-md border-b border-gray-200 px-3 py-3 flex items-center gap-2 shrink-0 shadow-sm">
+  // 🟢 وضعیت آنلاین: اول socket (online)، اگر نبود از API (online_status)
+  const isCurrentUserOnline =
+    !!currentChat && (currentChat.online || currentChat.online_status === 1);
+
+  // ===================================================
+  // 🧩 بلوک‌های JSX مشترک
+  // ===================================================
+
+  const renderConversationList = () => {
+    if (conversations.length === 0) {
+      return (
+        <div className="flex flex-col items-center justify-center py-20 px-6 text-center min-h-[60vh]">
+          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-50 to-purple-100 flex items-center justify-center text-5xl mb-5">
+            💬
+          </div>
+          <p className="text-lg font-bold text-gray-800 mb-2">هیچ پیامی ندارید</p>
+          <p className="text-sm text-gray-500 mb-8 leading-relaxed max-w-xs">
+            با ارسال پیام به آگهی‌ها، مکالمه خود را شروع کنید
+          </p>
+          <button
+            onClick={() => router.push('/explore')}
+            className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-3 rounded-xl font-semibold shadow-lg shadow-blue-500/30 hover:shadow-xl transition-all active:scale-[0.98]"
+          >
+            جستجوی آگهی
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="divide-y divide-gray-100 bg-white">
+        {conversations.map((conv) => {
+          const key = `${conv.user_id}-${conv.post_id ?? 'general'}`;
+          const isActive =
+            selectedChat === conv.user_id &&
+            (postIdForChat ?? null) === (conv.post_id ?? null);
+          const isOnline = conv.online || conv.online_status === 1;
+
+          return (
+            <div
+              key={key}
+              role="button"
+              tabIndex={0}
+              onClick={() => handleSelectConversation(conv)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleSelectConversation(conv);
+                }
+              }}
+              className={`w-full text-right px-4 py-3 lg:py-4 flex items-center gap-3 transition-colors cursor-pointer ${
+                isActive
+                  ? 'bg-blue-50 lg:bg-blue-50 border-r-2 lg:border-r-4 border-blue-600'
+                  : 'bg-white hover:bg-gray-50 active:bg-gray-100'
+              }`}
+            >
+              <div className="relative shrink-0">
+                <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-xl text-white font-bold shadow-md">
+                  {conv.user_name?.charAt(0) || '👤'}
+                </div>
+                {isOnline && (
+                  <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-white shadow" />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex justify-between items-center gap-2 mb-0.5">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span
+                      className={`font-semibold truncate ${
+                        conv.unread_count > 0 ? 'text-gray-900' : 'text-gray-700'
+                      }`}
+                    >
+                      {conv.user_name}
+                    </span>
+                    {conv.post_id ? (
+                      <span className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded shrink-0 font-medium">
+                        پروژه
+                      </span>
+                    ) : (
+                      <span className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded shrink-0 font-medium">
+                        عمومی
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-xs text-gray-400 whitespace-nowrap shrink-0">
+                    {formatTime(conv.last_message_time)}
+                  </span>
+                </div>
+                {conv.post_title && (
+                  <p className="text-[10px] lg:text-xs text-blue-600 truncate mb-0.5 font-medium">
+                    📋 {conv.post_title}
+                  </p>
+                )}
+                <div className="flex justify-between items-center gap-2">
+                  <p
+                    className={`text-sm truncate ${
+                      conv.unread_count > 0
+                        ? 'text-gray-700 font-medium'
+                        : 'text-gray-500'
+                    }`}
+                  >
+                    {conv.last_message}
+                  </p>
+                  {conv.unread_count > 0 && (
+                    <div className="min-w-[22px] h-[22px] px-1.5 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 shadow">
+                      {conv.unread_count > 9 ? '9+' : conv.unread_count}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const renderChatHeader = (showBack: boolean) => {
+    return (
+      <>
+        <div className="bg-white/95 backdrop-blur-md border-b border-gray-200 px-3 lg:px-4 py-3 flex items-center gap-2 lg:gap-3 shrink-0 shadow-sm">
+          {showBack && (
             <button
               onClick={handleBack}
-              className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-100 active:scale-95 transition-all"
+              className="lg:hidden w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-100 active:scale-95 transition-all"
               aria-label="بازگشت"
             >
               <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
             </button>
-            <div className="relative">
-              <div className="w-11 h-11 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-lg text-white font-bold shadow-md">
-                {currentChat.user_name?.charAt(0) || '👤'}
-              </div>
-              {currentChat.online && (
-                <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-white shadow" />
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="font-bold text-gray-800 truncate text-sm">
-                {currentChat.user_name}
-              </div>
-              <div className="text-xs text-gray-500 flex items-center gap-1">
-                {isTyping ? (
-                  <span className="text-blue-600 font-medium flex items-center gap-1">
-                    در حال نوشتن
-                    <span className="flex gap-0.5">
-                      <span className="w-1 h-1 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                      <span className="w-1 h-1 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                      <span className="w-1 h-1 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                    </span>
-                  </span>
-                ) : currentChat.online ? (
-                  <span className="text-green-600">آنلاین</span>
-                ) : (
-                  <span>آفلاین</span>
-                )}
-              </div>
-            </div>
-            <div
-              className={`w-2 h-2 rounded-full shrink-0 ${
-                isConnected ? 'bg-green-500' : 'bg-red-500 animate-pulse'
-              }`}
-              title={isConnected ? 'متصل' : 'قطع'}
-            />
-            <button
-              onClick={() => router.push(`/user/${currentChat.user_id}`)}
-              className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-100 active:scale-95 transition-all shrink-0"
-              aria-label="مشاهده پروفایل"
-            >
-              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-            </button>
-          </div>
-
-          {postTitleForChat && (
-            <div className="bg-blue-600/95 backdrop-blur-md border-b border-blue-700 px-3 py-2 shrink-0">
-              <div className="flex items-center gap-2">
-                <span className="text-sm shrink-0">📋</span>
-                <p className="text-xs text-white font-semibold truncate flex-1">
-                  {postTitleForChat}
-                </p>
-                <button
-                  onClick={() => router.push(`/post/${postIdForChat}`)}
-                  className="text-[10px] bg-white/20 text-white px-2 py-1 rounded-md hover:bg-white/30 active:scale-95 transition-all shrink-0 font-medium"
-                >
-                  مشاهده
-                </button>
-              </div>
-            </div>
           )}
-
-          {postIdForChat && (
-            <ContractBar
-              contract={contractData.contract}
-              role={contractData.role}
-              postId={postIdForChat}
-              otherUserId={selectedChat}
-              onRefresh={loadContract}
-              onRate={() => setShowRating(true)}
-              hasRated={!!contractData.myReview}
-              otherReview={contractData.otherReview}
-              postStatus={contractData.postStatus}
-            />
-          )}
-
-          <div
-            ref={messagesContainerRef}
-            className="flex-1 min-h-0 overflow-y-auto px-3 py-4 space-y-2"
-          >
-            {loading ? (
-              <div className="flex flex-col items-center justify-center py-20 text-gray-500">
-                <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-3" />
-                <p className="text-sm">در حال بارگذاری پیام‌ها...</p>
-              </div>
-            ) : messages.length > 0 ? (
-              <>
-                {messages.map((msg, index) => {
-                  const isMe = msg.sender_id === user?.id;
-                  const showDate =
-                    index === 0 ||
-                    new Date(msg.created_at).toDateString() !==
-                      new Date(messages[index - 1]?.created_at).toDateString();
-                  const prevMsg = messages[index - 1];
-                  const showAvatar =
-                    !isMe &&
-                    (index === 0 ||
-                      prevMsg?.sender_id !== msg.sender_id ||
-                      showDate);
-
-                  return (
-                    <div key={msg.id}>
-                      {showDate && (
-                        <div className="flex items-center gap-2 my-4">
-                          <div className="flex-1 h-px bg-gray-200" />
-                          <span className="text-xs text-gray-500 bg-white px-3 py-1 rounded-full shadow-sm font-medium">
-                            {formatDateSeparator(msg.created_at)}
-                          </span>
-                          <div className="flex-1 h-px bg-gray-200" />
-                        </div>
-                      )}
-                      <div className={`flex items-end gap-1.5 ${isMe ? 'justify-end' : 'justify-start'}`}>
-                        {!isMe && (
-                          <div className="w-7 shrink-0">
-                            {showAvatar ? (
-                              <div className="w-7 h-7 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-xs text-white font-bold">
-                                {currentChat.user_name?.charAt(0) || '👤'}
-                              </div>
-                            ) : (
-                              <div className="w-7 h-7" />
-                            )}
-                          </div>
-                        )}
-                        <div
-                          className={`max-w-[78%] rounded-2xl px-3.5 py-2.5 shadow-sm ${
-                            isMe
-                              ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-br-sm'
-                              : 'bg-white text-gray-800 rounded-bl-sm border border-gray-100'
-                          }`}
-                        >
-                          <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
-                            {msg.text || msg.message}
-                          </p>
-                          <div className={`flex items-center justify-end gap-1 mt-1 text-[10px] ${isMe ? 'text-blue-100' : 'text-gray-400'}`}>
-                            <span>{formatTime(msg.created_at)}</span>
-                            {isMe && (
-                              <span className={msg.is_read ? 'text-blue-100' : 'text-blue-200/70'}>
-                                {msg.is_read ? '✓✓' : '✓'}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-                {isTyping && (
-                  <div className="flex items-end gap-1.5 justify-start">
-                    <div className="w-7 h-7 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-xs text-white font-bold">
-                      {currentChat.user_name?.charAt(0) || '👤'}
-                    </div>
-                    <div className="bg-white border border-gray-100 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm">
-                      <div className="flex gap-1">
-                        <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                        <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                        <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-20 text-center px-6">
-                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center text-4xl mb-4">
-                  💬
-                </div>
-                <p className="text-gray-700 font-semibold mb-1">هنوز پیامی نیست</p>
-                <p className="text-sm text-gray-500">اولین پیام را شما ارسال کنید</p>
-              </div>
+          <div className="relative">
+            <div className="w-11 h-11 lg:w-12 lg:h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-lg lg:text-xl text-white font-bold shadow-md">
+              {currentChat?.user_name?.charAt(0) || '👤'}
+            </div>
+            {isCurrentUserOnline && (
+              <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-white shadow" />
             )}
           </div>
+          <div className="flex-1 min-w-0">
+            <div className="font-bold text-gray-800 truncate text-sm lg:text-base">
+              {currentChat?.user_name}
+            </div>
+            <div className="text-xs lg:text-sm text-gray-500 flex items-center gap-1">
+              {isTyping ? (
+                <span className="text-blue-600 font-medium flex items-center gap-1">
+                  در حال نوشتن
+                  <span className="flex gap-0.5">
+                    <span className="w-1 h-1 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <span className="w-1 h-1 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <span className="w-1 h-1 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                  </span>
+                </span>
+              ) : isCurrentUserOnline ? (
+                <span className="text-green-600">آنلاین</span>
+              ) : (
+                <span>آفلاین</span>
+              )}
+            </div>
+          </div>
+          <div
+            className={`w-2 h-2 rounded-full shrink-0 ${
+              isConnected ? 'bg-green-500' : 'bg-red-500 animate-pulse'
+            }`}
+            title={isConnected ? 'متصل' : 'قطع'}
+          />
+          <button
+            onClick={() => currentChat && router.push(`/user/${currentChat.user_id}`)}
+            className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-100 active:scale-95 transition-all shrink-0"
+            aria-label="مشاهده پروفایل"
+          >
+            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+          </button>
+        </div>
 
-          <div className="bg-white border-t border-gray-200 px-3 py-2.5 shadow-lg shrink-0">
-            <div className="flex items-end gap-2">
-              <div className="flex-1 relative">
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={newMessage}
-                  onChange={(e) => handleTyping(e.target.value)}
-                  onKeyDown={(e) =>
-                    e.key === 'Enter' && !e.shiftKey && handleSendMessage()
-                  }
-                  placeholder="پیام خود را بنویسید..."
-                  className="w-full bg-gray-100 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
-                  disabled={sending}
-                />
-              </div>
+        {postTitleForChat && (
+          <div className="bg-blue-600/95 backdrop-blur-md border-b border-blue-700 px-3 lg:px-4 py-2 shrink-0">
+            <div className="flex items-center gap-2">
+              <span className="text-sm shrink-0">📋</span>
+              <p className="text-xs lg:text-sm text-white font-semibold truncate flex-1">
+                {postTitleForChat}
+              </p>
               <button
-                onClick={handleSendMessage}
-                disabled={sending || !newMessage.trim()}
-                className="w-11 h-11 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-blue-500/40 active:scale-95 transition-all shrink-0"
-                aria-label="ارسال"
+                onClick={() => router.push(`/post/${postIdForChat}`)}
+                className="text-[10px] lg:text-xs bg-white/20 text-white px-2 py-1 rounded-md hover:bg-white/30 active:scale-95 transition-all shrink-0 font-medium"
               >
-                {sending ? (
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <svg className="w-5 h-5 rotate-180" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-                  </svg>
-                )}
+                مشاهده
               </button>
             </div>
           </div>
-        </div>
-      ) : (
-        <>
-          <div className="bg-white/95 backdrop-blur-md border-b border-gray-200 px-4 py-4 sticky top-0 z-10 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold text-gray-800">پیام‌ها</h1>
-                {totalUnread > 0 && (
-                  <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-                    {totalUnread > 99 ? '99+' : totalUnread}
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div
-                  className={`w-2 h-2 rounded-full ${
-                    isConnected ? 'bg-green-500' : 'bg-red-500 animate-pulse'
-                  }`}
-                />
-                <span className="text-xs text-gray-500">
-                  {isConnected ? 'آنلاین' : 'قطع'}
-                </span>
-              </div>
-            </div>
-          </div>
+        )}
 
-          <div className="pb-24">
-            {conversations.length > 0 ? (
-              <div className="divide-y divide-gray-100 bg-white">
-                {conversations.map((conv) => {
-                  const key = `${conv.user_id}-${conv.post_id ?? 'general'}`;
-                  return (
-                    <div
-                      key={key}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => handleSelectConversation(conv)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          handleSelectConversation(conv);
-                        }
-                      }}
-                      className="w-full text-right bg-white hover:bg-gray-50 active:bg-gray-100 px-4 py-3 flex items-center gap-3 transition-colors cursor-pointer"
-                    >
-                      <div className="relative shrink-0">
-                        <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-xl text-white font-bold shadow-md">
-                          {conv.user_name?.charAt(0) || '👤'}
-                        </div>
-                        {conv.online && (
-                          <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-white shadow" />
+        {postIdForChat && selectedChat && (
+          <ContractBar
+            contract={contractData.contract}
+            role={contractData.role}
+            postId={postIdForChat}
+            otherUserId={selectedChat}
+            onRefresh={loadContract}
+            onRate={() => setShowRating(true)}
+            hasRated={!!contractData.myReview}
+            otherReview={contractData.otherReview}
+            postStatus={contractData.postStatus}
+          />
+        )}
+      </>
+    );
+  };
+
+  const renderMessagesBody = () => {
+    return (
+      <div
+        ref={messagesContainerRef}
+        className="flex-1 min-h-0 overflow-y-auto px-3 lg:px-6 py-4 space-y-2"
+      >
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-20 text-gray-500">
+            <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-3" />
+            <p className="text-sm">در حال بارگذاری پیام‌ها...</p>
+          </div>
+        ) : messages.length > 0 ? (
+          <>
+            {messages.map((msg, index) => {
+              const isMe = msg.sender_id === user?.id;
+              const showDate =
+                index === 0 ||
+                new Date(msg.created_at).toDateString() !==
+                  new Date(messages[index - 1]?.created_at).toDateString();
+              const prevMsg = messages[index - 1];
+              const showAvatar =
+                !isMe &&
+                (index === 0 ||
+                  prevMsg?.sender_id !== msg.sender_id ||
+                  showDate);
+
+              return (
+                <div key={msg.id}>
+                  {showDate && (
+                    <div className="flex items-center gap-2 my-4">
+                      <div className="flex-1 h-px bg-gray-200" />
+                      <span className="text-xs text-gray-500 bg-white px-3 py-1 rounded-full shadow-sm font-medium">
+                        {formatDateSeparator(msg.created_at)}
+                      </span>
+                      <div className="flex-1 h-px bg-gray-200" />
+                    </div>
+                  )}
+                  <div className={`flex items-end gap-1.5 ${isMe ? 'justify-end' : 'justify-start'}`}>
+                    {!isMe && (
+                      <div className="w-7 shrink-0">
+                        {showAvatar ? (
+                          <div className="w-7 h-7 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-xs text-white font-bold">
+                            {currentChat?.user_name?.charAt(0) || '👤'}
+                          </div>
+                        ) : (
+                          <div className="w-7 h-7" />
                         )}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex justify-between items-center gap-2 mb-0.5">
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            <span className={`font-semibold truncate ${conv.unread_count > 0 ? 'text-gray-900' : 'text-gray-700'}`}>
-                              {conv.user_name}
-                            </span>
-                            {conv.post_id ? (
-                              <span className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded shrink-0 font-medium">پروژه</span>
-                            ) : (
-                              <span className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded shrink-0 font-medium">عمومی</span>
-                            )}
-                          </div>
-                          <span className="text-xs text-gray-400 whitespace-nowrap shrink-0">
-                            {formatTime(conv.last_message_time)}
+                    )}
+                    <div
+                      className={`max-w-[78%] lg:max-w-[65%] rounded-2xl px-3.5 lg:px-4 py-2.5 shadow-sm ${
+                        isMe
+                          ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-br-sm'
+                          : 'bg-white text-gray-800 rounded-bl-sm border border-gray-100'
+                      }`}
+                    >
+                      <p className="text-sm lg:text-[15px] leading-relaxed whitespace-pre-wrap break-words">
+                        {msg.text || msg.message}
+                      </p>
+                      <div className={`flex items-center justify-end gap-1 mt-1 text-[10px] lg:text-[11px] ${isMe ? 'text-blue-100' : 'text-gray-400'}`}>
+                        <span>{formatTime(msg.created_at)}</span>
+                        {isMe && (
+                          <span className={msg.is_read ? 'text-blue-100' : 'text-blue-200/70'}>
+                            {msg.is_read ? '✓✓' : '✓'}
                           </span>
-                        </div>
-                        {conv.post_title && (
-                          <p className="text-[10px] text-blue-600 truncate mb-0.5 font-medium">📋 {conv.post_title}</p>
                         )}
-                        <div className="flex justify-between items-center gap-2">
-                          <p className={`text-sm truncate ${conv.unread_count > 0 ? 'text-gray-700 font-medium' : 'text-gray-500'}`}>
-                            {conv.last_message}
-                          </p>
-                          {conv.unread_count > 0 && (
-                            <div className="min-w-[22px] h-[22px] px-1.5 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 shadow">
-                              {conv.unread_count > 9 ? '9+' : conv.unread_count}
-                            </div>
-                          )}
-                        </div>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-20 px-6 text-center min-h-[60vh]">
-                <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-50 to-purple-100 flex items-center justify-center text-5xl mb-5">
-                  💬
+                  </div>
                 </div>
-                <p className="text-lg font-bold text-gray-800 mb-2">هیچ پیامی ندارید</p>
-                <p className="text-sm text-gray-500 mb-8 leading-relaxed max-w-xs">
-                  با ارسال پیام به آگهی‌ها، مکالمه خود را شروع کنید
-                </p>
-                <button
-                  onClick={() => router.push('/explore')}
-                  className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-3 rounded-xl font-semibold shadow-lg shadow-blue-500/30 hover:shadow-xl transition-all active:scale-[0.98]"
-                >
-                  جستجوی آگهی
-                </button>
+              );
+            })}
+            {isTyping && (
+              <div className="flex items-end gap-1.5 justify-start">
+                <div className="w-7 h-7 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-xs text-white font-bold">
+                  {currentChat?.user_name?.charAt(0) || '👤'}
+                </div>
+                <div className="bg-white border border-gray-100 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm">
+                  <div className="flex gap-1">
+                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                  </div>
+                </div>
               </div>
             )}
+          </>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-20 text-center px-6">
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center text-4xl mb-4">
+              💬
+            </div>
+            <p className="text-gray-700 font-semibold mb-1">هنوز پیامی نیست</p>
+            <p className="text-sm text-gray-500">اولین پیام را شما ارسال کنید</p>
           </div>
-        </>
-      )}
+        )}
+      </div>
+    );
+  };
+
+  const renderMessageInput = () => {
+    return (
+      <div className="bg-white border-t border-gray-200 px-3 lg:px-4 py-2.5 lg:py-3 shadow-lg shrink-0">
+        <div className="flex items-end gap-2">
+          <div className="flex-1 relative">
+            <input
+              ref={inputRef}
+              type="text"
+              value={newMessage}
+              onChange={(e) => handleTyping(e.target.value)}
+              onKeyDown={(e) =>
+                e.key === 'Enter' && !e.shiftKey && handleSendMessage()
+              }
+              placeholder="پیام خود را بنویسید..."
+              className="w-full bg-gray-100 rounded-2xl px-4 py-3 text-sm lg:text-[15px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+              disabled={sending}
+            />
+          </div>
+          <button
+            onClick={handleSendMessage}
+            disabled={sending || !newMessage.trim()}
+            className="w-11 h-11 lg:w-12 lg:h-12 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-blue-500/40 active:scale-95 transition-all shrink-0"
+            aria-label="ارسال"
+          >
+            {sending ? (
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <svg className="w-5 h-5 rotate-180" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+              </svg>
+            )}
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* ===== موبایل ===== */}
+      <div className="lg:hidden">
+        {selectedChat && currentChat ? (
+          <div
+            className="fixed inset-x-0 top-0 flex flex-col bg-gradient-to-b from-blue-50 via-gray-50 to-gray-50 z-30"
+            style={{
+              height: '100dvh',
+              paddingBottom: 'env(safe-area-inset-bottom)',
+            }}
+          >
+            {renderChatHeader(true)}
+            {renderMessagesBody()}
+            {renderMessageInput()}
+          </div>
+        ) : (
+          <>
+            <div className="bg-white/95 backdrop-blur-md border-b border-gray-200 px-4 py-4 sticky top-0 z-10 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <h1 className="text-xl font-bold text-gray-800">پیام‌ها</h1>
+                  {totalUnread > 0 && (
+                    <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                      {totalUnread > 99 ? '99+' : totalUnread}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div
+                    className={`w-2 h-2 rounded-full ${
+                      isConnected ? 'bg-green-500' : 'bg-red-500 animate-pulse'
+                    }`}
+                  />
+                  <span className="text-xs text-gray-500">
+                    {isConnected ? 'آنلاین' : 'قطع'}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="pb-24">{renderConversationList()}</div>
+          </>
+        )}
+      </div>
+
+      {/* ===== دسکتاپ ===== */}
+      <div className="hidden lg:block bg-gray-50">
+        <div className="max-w-7xl mx-auto px-6 py-6">
+          <div
+            className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
+            style={{ height: 'calc(100vh - 8rem)' }}
+          >
+            <div className="grid grid-cols-[360px_1fr] h-full min-h-0">
+              {/* ستون راست: لیست مکالمات */}
+              <aside className="border-l border-gray-100 flex flex-col bg-white min-h-0">
+                <div className="px-5 py-4 border-b border-gray-100 shrink-0">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <h1 className="text-xl font-bold text-gray-800">پیام‌ها</h1>
+                      {totalUnread > 0 && (
+                        <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                          {totalUnread > 99 ? '99+' : totalUnread}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5" title={isConnected ? 'متصل' : 'قطع'}>
+                      <div
+                        className={`w-2 h-2 rounded-full ${
+                          isConnected ? 'bg-green-500' : 'bg-red-500 animate-pulse'
+                        }`}
+                      />
+                      <span className="text-xs text-gray-500">
+                        {isConnected ? 'آنلاین' : 'قطع'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex-1 min-h-0 overflow-y-auto">
+                  {renderConversationList()}
+                </div>
+              </aside>
+
+              {/* ستون چپ: چت */}
+              <main className="flex flex-col bg-gradient-to-b from-blue-50/30 via-gray-50 to-gray-50 min-h-0">
+                {selectedChat && currentChat ? (
+                  <>
+                    <div className="shrink-0">{renderChatHeader(false)}</div>
+                    {renderMessagesBody()}
+                    <div className="shrink-0">{renderMessageInput()}</div>
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full text-center px-6">
+                    <div className="w-28 h-28 rounded-full bg-gradient-to-br from-blue-50 to-purple-100 flex items-center justify-center text-6xl mb-6 shadow-inner">
+                      💬
+                    </div>
+                    <p className="text-xl font-bold text-gray-800 mb-2">
+                      یک گفتگو انتخاب کنید
+                    </p>
+                    <p className="text-sm text-gray-500 max-w-sm leading-relaxed">
+                      از لیست سمت راست یک مکالمه را انتخاب کنید تا پیام‌ها نمایش داده شوند
+                    </p>
+                  </div>
+                )}
+              </main>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <RatingModal
         open={showRating}

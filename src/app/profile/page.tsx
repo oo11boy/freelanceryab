@@ -91,7 +91,6 @@ export default function ProfilePage() {
   const [projectFilter, setProjectFilter] =
     useState<ProjectFilter>("freelancer");
 
-  // 🔑 مودال
   const [activeModal, setActiveModal] = useState<ModalType>(null);
 
   useEffect(() => {
@@ -106,7 +105,6 @@ export default function ProfilePage() {
     }
   }, [token, reviewsLoaded]);
 
-  // لود ذخیره‌ها وقتی مودال باز می‌شه
   useEffect(() => {
     if (activeModal === "saved" && token) {
       loadSavedPosts();
@@ -216,57 +214,57 @@ export default function ProfilePage() {
     return `${Math.floor(days / 30)} ماه پیش`;
   };
 
-const getStatusBadge = (status: string) => {
-  if (status === "pending") {
-    return {
-      label: "⏳ در انتظار تأیید",
-      classes: "bg-amber-50 text-amber-700 border border-amber-200",
-    };
-  }
-  if (status === "active") {
-    return {
-      label: "● فعال",
-      classes: "bg-green-50 text-green-700 border border-green-200",
-    };
-  }
-  if (status === "locked") {
-    return {
-      label: "🔒 قفل شده",
-      classes: "bg-purple-50 text-purple-700 border border-purple-200",
-    };
-  }
-  if (status === "in_progress") {
-    return {
-      label: "🔄 در حال انجام",
-      classes: "bg-amber-50 text-amber-700 border border-amber-200",
-    };
-  }
-  if (status === "delivered") {
-    return {
-      label: "📦 منتظر تأیید",
-      classes: "bg-orange-50 text-orange-700 border border-orange-200",
-    };
-  }
-  if (status === "completed") {
-    return {
-      label: "✅ تکمیل شده",
-      classes: "bg-blue-50 text-blue-700 border border-blue-200",
-    };
-  }
-  if (status === "rejected") {
-    return {
-      label: "❌ رد شده",
-      classes: "bg-red-50 text-red-600 border border-red-200",
-    };
-  }
-  if (status === "expired") {
-    return {
-      label: "🗑 حذف شده",
-      classes: "bg-red-50 text-red-600 border border-red-200",
-    };
-  }
-  return { label: status, classes: "bg-gray-100 text-gray-600" };
-};
+  const getStatusBadge = (status: string) => {
+    if (status === "pending") {
+      return {
+        label: "⏳ در انتظار تأیید",
+        classes: "bg-amber-50 text-amber-700 border border-amber-200",
+      };
+    }
+    if (status === "active") {
+      return {
+        label: "● فعال",
+        classes: "bg-green-50 text-green-700 border border-green-200",
+      };
+    }
+    if (status === "locked") {
+      return {
+        label: "🔒 قفل شده",
+        classes: "bg-purple-50 text-purple-700 border border-purple-200",
+      };
+    }
+    if (status === "in_progress") {
+      return {
+        label: "🔄 در حال انجام",
+        classes: "bg-amber-50 text-amber-700 border border-amber-200",
+      };
+    }
+    if (status === "delivered") {
+      return {
+        label: "📦 منتظر تأیید",
+        classes: "bg-orange-50 text-orange-700 border border-orange-200",
+      };
+    }
+    if (status === "completed") {
+      return {
+        label: "✅ تکمیل شده",
+        classes: "bg-blue-50 text-blue-700 border border-blue-200",
+      };
+    }
+    if (status === "rejected") {
+      return {
+        label: "❌ رد شده",
+        classes: "bg-red-50 text-red-600 border border-red-200",
+      };
+    }
+    if (status === "expired") {
+      return {
+        label: "🗑 حذف شده",
+        classes: "bg-red-50 text-red-600 border border-red-200",
+      };
+    }
+    return { label: status, classes: "bg-gray-100 text-gray-600" };
+  };
 
   if (!token) {
     return (
@@ -320,26 +318,25 @@ const getStatusBadge = (status: string) => {
     projectFilter === "freelancer" ? freelancerProjects : clientProjects;
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24">
-      {/* هدر پروفایل */}
-      {/* هدر پروفایل */}
+    <div className="min-h-screen bg-gray-50 pb-24 lg:pb-12">
+      {/* ===== هدر پروفایل ===== */}
       <div className="relative bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 text-white overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-32 translate-x-32" />
-        <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full translate-y-24 -translate-x-24" />
+        <div className="absolute top-0 right-0 w-64 h-64 lg:w-96 lg:h-96 bg-white/10 rounded-full -translate-y-32 translate-x-32" />
+        <div className="absolute bottom-0 left-0 w-48 h-48 lg:w-72 lg:h-72 bg-white/10 rounded-full translate-y-24 -translate-x-24" />
 
-        <div className="relative px-5 pt-8 pb-16">
-          <div className="flex items-center justify-between mb-6">
-            <h1 className="text-lg font-bold">پروفایل من</h1>
+        <div className="relative max-w-7xl mx-auto px-5 lg:px-6 pt-8 lg:pt-10 pb-16 lg:pb-24">
+          {/* نوار بالا */}
+          <div className="flex items-center justify-between mb-6 lg:mb-8">
+            <h1 className="text-lg lg:text-2xl font-bold">پروفایل من</h1>
             <div className="flex items-center gap-2">
-              {/* دکمه ذخیره‌ها */}
               <button
                 onClick={() => setActiveModal("saved")}
-                className="flex flex-col items-center gap-1 px-2 py-1.5 rounded-xl bg-white/15 backdrop-blur-sm hover:bg-white/25 active:scale-95 transition-all relative"
+                className="flex flex-col lg:flex-row items-center gap-1 lg:gap-2 px-2 lg:px-4 py-1.5 lg:py-2.5 rounded-xl bg-white/15 backdrop-blur-sm hover:bg-white/25 active:scale-95 transition-all relative"
                 aria-label="ذخیره شده‌ها"
               >
                 <div className="relative">
                   <svg
-                    className="w-5 h-5"
+                    className="w-5 h-5 lg:w-5 lg:h-5"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -357,15 +354,14 @@ const getStatusBadge = (status: string) => {
                     </span>
                   )}
                 </div>
-                <span className="text-[9px] font-medium whitespace-nowrap">
+                <span className="text-[9px] lg:text-sm font-medium whitespace-nowrap">
                   ذخیره‌ها
                 </span>
               </button>
 
-              {/* دکمه ویرایش */}
               <Link
                 href="/profile/edit"
-                className="flex flex-col items-center gap-1 px-2 py-1.5 rounded-xl bg-white/15 backdrop-blur-sm hover:bg-white/25 active:scale-95 transition-all"
+                className="flex flex-col lg:flex-row items-center gap-1 lg:gap-2 px-2 lg:px-4 py-1.5 lg:py-2.5 rounded-xl bg-white/15 backdrop-blur-sm hover:bg-white/25 active:scale-95 transition-all"
                 aria-label="ویرایش پروفایل"
               >
                 <svg
@@ -381,15 +377,14 @@ const getStatusBadge = (status: string) => {
                     d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
                   />
                 </svg>
-                <span className="text-[9px] font-medium whitespace-nowrap">
+                <span className="text-[9px] lg:text-sm font-medium whitespace-nowrap">
                   ویرایش
                 </span>
               </Link>
 
-              {/* دکمه خروج */}
               <button
                 onClick={logout}
-                className="flex flex-col items-center gap-1 px-2 py-1.5 rounded-xl bg-white/15 backdrop-blur-sm hover:bg-white/25 active:scale-95 transition-all"
+                className="flex flex-col lg:flex-row items-center gap-1 lg:gap-2 px-2 lg:px-4 py-1.5 lg:py-2.5 rounded-xl bg-white/15 backdrop-blur-sm hover:bg-white/25 active:scale-95 transition-all"
                 aria-label="خروج"
               >
                 <svg
@@ -405,40 +400,41 @@ const getStatusBadge = (status: string) => {
                     d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
                   />
                 </svg>
-                <span className="text-[9px] font-medium whitespace-nowrap">
+                <span className="text-[9px] lg:text-sm font-medium whitespace-nowrap">
                   خروج
                 </span>
               </button>
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            <div className="relative">
-              <div className="w-20 h-20 bg-white rounded-2xl flex items-center justify-center text-4xl text-gray-700 shadow-xl font-bold">
+          {/* کارت کاربر */}
+          <div className="flex flex-col lg:flex-row items-start lg:items-center gap-4 lg:gap-6">
+            <div className="relative shrink-0">
+              <div className="w-20 h-20 lg:w-28 lg:h-28 bg-white rounded-2xl lg:rounded-3xl flex items-center justify-center text-4xl lg:text-5xl text-gray-700 shadow-xl font-bold">
                 {user?.full_name?.charAt(0) || "👤"}
               </div>
-              <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-2 border-white" />
+              <div className="absolute -bottom-1 -right-1 w-6 h-6 lg:w-8 lg:h-8 bg-green-500 rounded-full border-2 lg:border-4 border-white" />
             </div>
             <div className="flex-1 min-w-0">
-              <h2 className="text-xl font-bold truncate">
+              <h2 className="text-xl lg:text-3xl font-bold truncate">
                 {user?.full_name || "کاربر همیار"}
               </h2>
-              <p className="text-sm opacity-80 mt-1" dir="ltr">
+              <p className="text-sm lg:text-base opacity-80 mt-1" dir="ltr">
                 {user?.phone}
               </p>
               {reviewsLoaded && ratingStats.total > 0 && (
                 <div className="flex items-center gap-1.5 mt-2">
                   <div className="flex items-center gap-0.5">
                     {[1, 2, 3, 4, 5].map((star) => (
-                      <span key={star} className="text-sm">
+                      <span key={star} className="text-sm lg:text-base">
                         {star <= Math.round(ratingStats.average) ? "⭐" : "☆"}
                       </span>
                     ))}
                   </div>
-                  <span className="text-xs font-bold">
+                  <span className="text-xs lg:text-sm font-bold">
                     {ratingStats.average.toFixed(1)}
                   </span>
-                  <span className="text-[10px] opacity-80">
+                  <span className="text-[10px] lg:text-xs opacity-80">
                     ({ratingStats.total} نظر)
                   </span>
                 </div>
@@ -448,174 +444,138 @@ const getStatusBadge = (status: string) => {
         </div>
       </div>
 
-      {/* آمار */}
-      <div className="-mt-12 px-4 relative z-10">
-        <div className="bg-white rounded-2xl shadow-lg shadow-gray-200/50 p-4 grid grid-cols-3 divide-x divide-x-reverse divide-gray-100">
-          <div className="text-center px-2">
-            <div className="text-2xl font-bold text-blue-600">
-              {stats.active}
+      {/* ===== محتوای اصلی ===== */}
+      <div className="max-w-7xl mx-auto lg:px-6">
+        {/* آمار — دسکتاپ بالای گرید، موبایل با -mt */}
+        <div className="px-4 lg:px-0 -mt-12 lg:-mt-16 relative z-10">
+          <div className="bg-white rounded-2xl shadow-lg shadow-gray-200/50 p-4 lg:p-6 grid grid-cols-3 divide-x divide-x-reverse divide-gray-100">
+            <div className="text-center px-2">
+              <div className="text-2xl lg:text-4xl font-bold text-blue-600">
+                {stats.active}
+              </div>
+              <div className="text-xs lg:text-sm text-gray-500 mt-1">آگهی فعال</div>
             </div>
-            <div className="text-xs text-gray-500 mt-1">آگهی فعال</div>
-          </div>
-          <div className="text-center px-2">
-            <div className="text-2xl font-bold text-green-600">
-              {stats.completed}
+            <div className="text-center px-2">
+              <div className="text-2xl lg:text-4xl font-bold text-green-600">
+                {stats.completed}
+              </div>
+              <div className="text-xs lg:text-sm text-gray-500 mt-1">پروژه انجام شده</div>
             </div>
-            <div className="text-xs text-gray-500 mt-1">پروژه انجام شده</div>
-          </div>
-          <div className="text-center px-2">
-            <div className="text-2xl font-bold text-purple-600">
-              {stats.totalViews}
+            <div className="text-center px-2">
+              <div className="text-2xl lg:text-4xl font-bold text-purple-600">
+                {stats.totalViews}
+              </div>
+              <div className="text-xs lg:text-sm text-gray-500 mt-1">بازدید کل</div>
             </div>
-            <div className="text-xs text-gray-500 mt-1">بازدید کل</div>
           </div>
         </div>
-      </div>
 
-      {/* تب‌ها */}
-      <div className="mt-6 mx-4 bg-white rounded-xl p-1.5 shadow-sm flex">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${
-              activeTab === tab.id
-                ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md"
-                : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            <span className="text-base">{tab.icon}</span>
-            <span>{tab.label}</span>
-          </button>
-        ))}
-      </div>
+        {/* تب‌ها */}
+        <div className="mt-6 lg:mt-8 mx-4 lg:mx-0 bg-white rounded-xl lg:rounded-2xl p-1.5 lg:p-2 shadow-sm flex lg:max-w-md">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex-1 py-2.5 lg:py-3 px-3 rounded-lg lg:rounded-xl text-sm lg:text-base font-medium transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${
+                activeTab === tab.id
+                  ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              <span className="text-base lg:text-lg">{tab.icon}</span>
+              <span>{tab.label}</span>
+            </button>
+          ))}
+        </div>
 
-      {/* محتوای تب‌ها */}
-      <div className="p-4">
-        {/* تب آگهی‌ها */}
-        {activeTab === "posts" && (
-          <div className="space-y-3">
-            {loading ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <div
-                    key={i}
-                    className="bg-white rounded-2xl p-4 shadow-sm animate-pulse"
-                  >
-                    <div className="flex justify-between items-start gap-3 mb-3">
-                      <div className="h-4 bg-gray-200 rounded w-3/4" />
-                      <div className="h-5 bg-gray-100 rounded-full w-16 shrink-0" />
-                    </div>
-                    <div className="flex justify-between mb-4">
-                      <div className="h-3 bg-gray-100 rounded w-1/3" />
-                      <div className="h-3 bg-gray-100 rounded w-1/4" />
-                    </div>
-                    <div className="flex gap-2">
-                      <div className="h-10 bg-gray-100 rounded-xl flex-1" />
-                      <div className="h-10 bg-gray-100 rounded-xl flex-1" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : sortedPosts.length > 0 ? (
-              sortedPosts.map((post) => {
-                const isExpired = post.status === "expired";
-                const isDeleting = deletingId === post.id;
-                const badge = getStatusBadge(post.status);
-
-                return (
-                  <div
-                    key={post.id}
-                    className={`rounded-2xl shadow-sm border transition-all overflow-hidden ${
-                      isExpired
-                        ? "border-red-100 bg-red-50/40 opacity-75"
-                        : "bg-white border-gray-100 hover:shadow-md"
-                    }`}
-                  >
-                    {/* هدر کارت: عنوان + بج */}
-                    <div className="p-4 pb-3">
+        {/* محتوای تب‌ها */}
+        <div className="p-4 lg:p-0 lg:mt-6">
+          {/* تب آگهی‌ها */}
+          {activeTab === "posts" && (
+            <div className="space-y-3 lg:grid lg:grid-cols-2 lg:gap-5 lg:space-y-0">
+              {loading ? (
+                <>
+                  {[1, 2, 3, 4].map((i) => (
+                    <div
+                      key={i}
+                      className="bg-white rounded-2xl p-4 lg:p-5 shadow-sm animate-pulse"
+                    >
                       <div className="flex justify-between items-start gap-3 mb-3">
-                        <h3
-                          className={`font-bold flex-1 leading-relaxed text-sm line-clamp-2 ${
-                            isExpired
-                              ? "text-gray-500 line-through"
-                              : "text-gray-800"
-                          }`}
-                        >
-                          {post.title}
-                        </h3>
-                        <span
-                          className={`text-[10px] px-2.5 py-1 rounded-full font-bold shrink-0 flex items-center gap-1 ${badge.classes}`}
-                        >
-                          {badge.label}
-                        </span>
+                        <div className="h-4 bg-gray-200 rounded w-3/4" />
+                        <div className="h-5 bg-gray-100 rounded-full w-16 shrink-0" />
                       </div>
-
-                      {/* اطلاعات: قیمت + بازدید */}
-                      <div className="flex items-center gap-3 text-xs">
-                        {/* قیمت */}
-                        <span
-                          className={`flex items-center gap-1 font-medium ${
-                            isExpired ? "text-gray-400" : "text-emerald-700"
-                          }`}
-                        >
-                          <span className="text-sm">💰</span>
-                          {post.price &&
-                          post.price !== "0" &&
-                          post.price !== "null" ? (
-                            <span className="font-bold">
-                              {Number(post.price).toLocaleString("fa-IR")}{" "}
-                              <span className="text-[10px] font-medium">
-                                تومان
-                              </span>
-                            </span>
-                          ) : (
-                            <span className="text-amber-600 font-bold">
-                              توافقی
-                            </span>
-                          )}
-                        </span>
-
-                        <span className="w-px h-3 bg-gray-200" />
-
-                        {/* بازدید */}
-                        <span className="flex items-center gap-1 text-gray-500">
-                          <svg
-                            className="w-3.5 h-3.5"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                            />
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                            />
-                          </svg>
-                          <span className="font-medium">
-                            {post.views.toLocaleString("fa-IR")}
-                          </span>
-                        </span>
+                      <div className="flex justify-between mb-4">
+                        <div className="h-3 bg-gray-100 rounded w-1/3" />
+                        <div className="h-3 bg-gray-100 rounded w-1/4" />
+                      </div>
+                      <div className="flex gap-2">
+                        <div className="h-10 bg-gray-100 rounded-xl flex-1" />
+                        <div className="h-10 bg-gray-100 rounded-xl flex-1" />
                       </div>
                     </div>
+                  ))}
+                </>
+              ) : sortedPosts.length > 0 ? (
+                sortedPosts.map((post) => {
+                  const isExpired = post.status === "expired";
+                  const isDeleting = deletingId === post.id;
+                  const badge = getStatusBadge(post.status);
 
-                    {/* دکمه‌های اقدام */}
-                    <div className="px-4 pb-4">
-                      {post.status === "locked" ? (
-                        <div className="flex gap-2">
-                          <Link
-                            href={`/post/${post.id}`}
-                            className="flex-1 text-center text-xs bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-2.5 rounded-xl font-bold shadow-md shadow-purple-500/30 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
+                  return (
+                    <div
+                      key={post.id}
+                      className={`rounded-2xl shadow-sm border transition-all overflow-hidden h-full flex flex-col ${
+                        isExpired
+                          ? "border-red-100 bg-red-50/40 opacity-75"
+                          : "bg-white border-gray-100 hover:shadow-md"
+                      }`}
+                    >
+                      <div className="p-4 lg:p-5 pb-3">
+                        <div className="flex justify-between items-start gap-3 mb-3">
+                          <h3
+                            className={`font-bold flex-1 leading-relaxed text-sm lg:text-base line-clamp-2 ${
+                              isExpired
+                                ? "text-gray-500 line-through"
+                                : "text-gray-800"
+                            }`}
                           >
+                            {post.title}
+                          </h3>
+                          <span
+                            className={`text-[10px] lg:text-xs px-2.5 py-1 rounded-full font-bold shrink-0 flex items-center gap-1 ${badge.classes}`}
+                          >
+                            {badge.label}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-3 text-xs lg:text-sm">
+                          <span
+                            className={`flex items-center gap-1 font-medium ${
+                              isExpired ? "text-gray-400" : "text-emerald-700"
+                            }`}
+                          >
+                            <span className="text-sm lg:text-base">💰</span>
+                            {post.price &&
+                            post.price !== "0" &&
+                            post.price !== "null" ? (
+                              <span className="font-bold">
+                                {Number(post.price).toLocaleString("fa-IR")}{" "}
+                                <span className="text-[10px] lg:text-xs font-medium">
+                                  تومان
+                                </span>
+                              </span>
+                            ) : (
+                              <span className="text-amber-600 font-bold">
+                                توافقی
+                              </span>
+                            )}
+                          </span>
+
+                          <span className="w-px h-3 bg-gray-200" />
+
+                          <span className="flex items-center gap-1 text-gray-500">
                             <svg
-                              className="w-4 h-4"
+                              className="w-3.5 h-3.5 lg:w-4 lg:h-4"
                               fill="none"
                               stroke="currentColor"
                               viewBox="0 0 24 24"
@@ -633,131 +593,260 @@ const getStatusBadge = (status: string) => {
                                 d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
                               />
                             </svg>
-                            مشاهده پروژه
-                          </Link>
-                          <div className="flex-1 text-xs bg-purple-50 border border-purple-200 text-purple-700 py-2.5 rounded-xl font-bold text-center flex items-center justify-center gap-1">
-                            🔒 قفل شده
-                          </div>
+                            <span className="font-medium">
+                              {post.views.toLocaleString("fa-IR")}
+                            </span>
+                          </span>
                         </div>
-                      ) : post.status === "in_progress" ? (
-                        <div className="flex gap-2">
-                          <Link
-                            href={`/post/${post.id}`}
-                            className="flex-1 text-center text-xs bg-gradient-to-r from-amber-500 to-orange-500 text-white py-2.5 rounded-xl font-bold shadow-md shadow-amber-500/30 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
-                          >
-                            <svg
-                              className="w-4 h-4"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
+                      </div>
+
+                      <div className="px-4 lg:px-5 pb-4 lg:pb-5 mt-auto">
+                        {post.status === "locked" ? (
+                          <div className="flex gap-2">
+                            <Link
+                              href={`/post/${post.id}`}
+                              className="flex-1 text-center text-xs lg:text-sm bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-2.5 rounded-xl font-bold shadow-md shadow-purple-500/30 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
                             >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                              />
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                              />
-                            </svg>
-                            مشاهده پروژه
-                          </Link>
-                          <div className="flex-1 text-xs bg-amber-50 border border-amber-200 text-amber-700 py-2.5 rounded-xl font-bold text-center flex items-center justify-center gap-1">
-                            🔄 در حال انجام
+                              مشاهده پروژه
+                            </Link>
+                            <div className="flex-1 text-xs lg:text-sm bg-purple-50 border border-purple-200 text-purple-700 py-2.5 rounded-xl font-bold text-center flex items-center justify-center gap-1">
+                              🔒 قفل شده
+                            </div>
                           </div>
-                        </div>
-                      ) : post.status === "delivered" ? (
-                        <div className="flex gap-2">
-                          <Link
-                            href={`/post/${post.id}`}
-                            className="flex-1 text-center text-xs bg-gradient-to-r from-orange-500 to-red-500 text-white py-2.5 rounded-xl font-bold shadow-md shadow-orange-500/30 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
-                          >
-                            <svg
-                              className="w-4 h-4"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
+                        ) : post.status === "in_progress" ? (
+                          <div className="flex gap-2">
+                            <Link
+                              href={`/post/${post.id}`}
+                              className="flex-1 text-center text-xs lg:text-sm bg-gradient-to-r from-amber-500 to-orange-500 text-white py-2.5 rounded-xl font-bold shadow-md shadow-amber-500/30 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
                             >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                              />
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                              />
-                            </svg>
-                            مشاهده پروژه
+                              مشاهده پروژه
+                            </Link>
+                            <div className="flex-1 text-xs lg:text-sm bg-amber-50 border border-amber-200 text-amber-700 py-2.5 rounded-xl font-bold text-center flex items-center justify-center gap-1">
+                              🔄 در حال انجام
+                            </div>
+                          </div>
+                        ) : post.status === "delivered" ? (
+                          <div className="flex gap-2">
+                            <Link
+                              href={`/post/${post.id}`}
+                              className="flex-1 text-center text-xs lg:text-sm bg-gradient-to-r from-orange-500 to-red-500 text-white py-2.5 rounded-xl font-bold shadow-md shadow-orange-500/30 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
+                            >
+                              مشاهده پروژه
+                            </Link>
+                            <div className="flex-1 text-xs lg:text-sm bg-orange-50 border border-orange-200 text-orange-700 py-2.5 rounded-xl font-bold text-center flex items-center justify-center gap-1">
+                              📦 منتظر تأیید
+                            </div>
+                          </div>
+                        ) : post.status === "pending" ? (
+                          <div className="flex gap-2">
+                            <div className="flex-1 text-xs lg:text-sm bg-amber-50 border border-amber-200 text-amber-700 py-2.5 rounded-xl font-bold text-center flex items-center justify-center gap-1">
+                              ⏳ در انتظار تأیید
+                            </div>
+                            <button
+                              onClick={() => handleDeletePost(post.id)}
+                              disabled={isDeleting}
+                              className="flex-1 text-xs lg:text-sm border-2 border-red-200 text-red-600 py-2.5 rounded-xl font-bold hover:bg-red-50 transition-colors active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-1.5"
+                            >
+                              {isDeleting ? (
+                                <>
+                                  <div className="w-3.5 h-3.5 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
+                                  در حال حذف...
+                                </>
+                              ) : (
+                                <>حذف</>
+                              )}
+                            </button>
+                          </div>
+                        ) : post.status === "rejected" ? (
+                          <div className="w-full bg-red-50 border border-red-200 text-red-600 py-2.5 rounded-xl font-bold text-xs lg:text-sm text-center flex items-center justify-center gap-1.5">
+                            ❌ رد شده توسط ادمین
+                          </div>
+                        ) : isExpired ? (
+                          <div className="w-full bg-gray-100 border border-gray-200 text-gray-500 py-2.5 rounded-xl font-bold text-xs lg:text-sm text-center flex items-center justify-center gap-1.5">
+                            🗑 حذف شده
+                          </div>
+                        ) : (
+                          <div className="flex gap-2">
+                            <Link
+                              href={`/post/${post.id}`}
+                              className="flex-1 text-center text-xs lg:text-sm bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-2.5 rounded-xl font-bold shadow-md shadow-blue-500/30 hover:shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
+                            >
+                              مشاهده
+                            </Link>
+                            <button
+                              onClick={() => handleDeletePost(post.id)}
+                              disabled={isDeleting}
+                              className="flex-1 text-xs lg:text-sm border-2 border-red-200 text-red-600 py-2.5 rounded-xl font-bold hover:bg-red-50 transition-colors active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-1.5"
+                            >
+                              {isDeleting ? (
+                                <>
+                                  <div className="w-3.5 h-3.5 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
+                                  در حال حذف...
+                                </>
+                              ) : (
+                                <>حذف</>
+                              )}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="lg:col-span-2 bg-white rounded-2xl p-10 lg:p-16 text-center shadow-sm">
+                  <div className="w-20 h-20 lg:w-24 lg:h-24 mx-auto mb-4 lg:mb-6 rounded-full bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center text-4xl lg:text-5xl">
+                    📝
+                  </div>
+                  <p className="text-gray-700 font-bold mb-1 lg:text-lg">هنوز آگهی ندارید</p>
+                  <p className="text-sm lg:text-base text-gray-500 mb-6">اولین آگهی خود را ثبت کنید</p>
+                  <Link
+                    href="/create-post"
+                    className="inline-block bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-blue-500/30 hover:shadow-xl transition-all active:scale-[0.98]"
+                  >
+                    ثبت آگهی جدید
+                  </Link>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* تب پروژه‌ها */}
+          {activeTab === "projects" && (
+            <div className="space-y-4">
+              <div className="bg-white rounded-xl p-1.5 shadow-sm flex lg:max-w-md">
+                <button
+                  onClick={() => setProjectFilter("freelancer")}
+                  className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-1.5 ${
+                    projectFilter === "freelancer"
+                      ? "bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-md"
+                      : "text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  <span className="text-base">🔨</span>
+                  <span>فریلنسر</span>
+                  {freelancerProjects.length > 0 && (
+                    <span
+                      className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                        projectFilter === "freelancer"
+                          ? "bg-white/20"
+                          : "bg-gray-100"
+                      }`}
+                    >
+                      {freelancerProjects.length}
+                    </span>
+                  )}
+                </button>
+                <button
+                  onClick={() => setProjectFilter("client")}
+                  className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-1.5 ${
+                    projectFilter === "client"
+                      ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md"
+                      : "text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  <span className="text-base">📋</span>
+                  <span>کارفرما</span>
+                  {clientProjects.length > 0 && (
+                    <span
+                      className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                        projectFilter === "client" ? "bg-white/20" : "bg-gray-100"
+                      }`}
+                    >
+                      {clientProjects.length}
+                    </span>
+                  )}
+                </button>
+              </div>
+
+              <div
+                className={`rounded-xl p-3 border-2 ${
+                  projectFilter === "freelancer"
+                    ? "bg-green-50 border-green-200"
+                    : "bg-blue-50 border-blue-200"
+                }`}
+              >
+                <p
+                  className={`text-xs lg:text-sm leading-relaxed ${
+                    projectFilter === "freelancer"
+                      ? "text-green-800"
+                      : "text-blue-800"
+                  }`}
+                >
+                  {projectFilter === "freelancer"
+                    ? "🔨 پروژه‌هایی که شما به عنوان فریلنسر انجام دادید و کارفرما تأیید کرده است."
+                    : "📋 پروژه‌هایی که شما به عنوان کارفرما سفارش دادید و فریلنسر تحویل داده است."}
+                </p>
+              </div>
+
+              {reviewsLoading ? (
+                <div className="space-y-3 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
+                  {[1, 2].map((i) => (
+                    <div
+                      key={i}
+                      className="bg-white rounded-2xl p-4 shadow-sm animate-pulse"
+                    >
+                      <div className="h-4 bg-gray-200 rounded w-1/3 mb-3" />
+                      <div className="h-3 bg-gray-100 rounded w-full mb-2" />
+                      <div className="h-3 bg-gray-100 rounded w-2/3" />
+                    </div>
+                  ))}
+                </div>
+              ) : filteredProjects.length > 0 ? (
+                <div className="space-y-2.5 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
+                  {filteredProjects.map((contract) => (
+                    <div
+                      key={contract.contract_id}
+                      className="bg-white rounded-2xl p-4 lg:p-5 shadow-sm border border-gray-100 hover:shadow-md transition-all"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div
+                          className={`w-10 h-10 lg:w-12 lg:h-12 rounded-xl flex items-center justify-center text-white text-lg lg:text-xl font-bold shrink-0 shadow-md bg-gradient-to-br ${
+                            projectFilter === "freelancer"
+                              ? "from-green-500 to-emerald-600"
+                              : "from-blue-500 to-indigo-600"
+                          }`}
+                        >
+                          {projectFilter === "freelancer" ? "🔨" : "📋"}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <Link
+                            href={`/post/${contract.post_id}`}
+                            className="font-semibold text-sm lg:text-base text-gray-800 truncate block hover:text-blue-600 mb-1"
+                          >
+                            {contract.post_title}
                           </Link>
-                          <div className="flex-1 text-xs bg-orange-50 border border-orange-200 text-orange-700 py-2.5 rounded-xl font-bold text-center flex items-center justify-center gap-1">
-                            📦 منتظر تأیید
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] lg:text-sm text-gray-500 mb-2">
+                            <span className="flex items-center gap-1">
+                              <span>
+                                {projectFilter === "freelancer"
+                                  ? "کارفرما:"
+                                  : "فریلنسر:"}
+                              </span>
+                              <Link
+                                href={`/user/${contract.other_user_id}`}
+                                className="text-blue-600 font-medium hover:underline"
+                              >
+                                {contract.other_user_name}
+                              </Link>
+                            </span>
+                            <span>•</span>
+                            <span className="flex items-center gap-1">
+                              <span>📅</span>
+                              {formatTimeAgo(contract.completed_at)}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] lg:text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full font-medium border border-green-200">
+                              ✅ تکمیل شده
+                            </span>
                           </div>
                         </div>
-                      ) :
-                       post.status === "pending" ? (
-  // ⏳ در انتظار تأیید
-  <div className="flex gap-2">
-    <div className="flex-1 text-xs bg-amber-50 border border-amber-200 text-amber-700 py-2.5 rounded-xl font-bold text-center flex items-center justify-center gap-1">
-      ⏳ در انتظار تأیید
-    </div>
-    <button
-      onClick={() => handleDeletePost(post.id)}
-      disabled={isDeleting}
-      className="flex-1 text-xs border-2 border-red-200 text-red-600 py-2.5 rounded-xl font-bold hover:bg-red-50 transition-colors active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-1.5"
-    >
-      {isDeleting ? (
-        <>
-          <div className="w-3.5 h-3.5 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
-          در حال حذف...
-        </>
-      ) : (
-        <>
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-            />
-          </svg>
-          حذف
-        </>
-      )}
-    </button>
-  </div>
-) : post.status === "rejected" ? (
-  // ❌ رد شده
-  <div className="w-full bg-red-50 border border-red-200 text-red-600 py-2.5 rounded-xl font-bold text-xs text-center flex items-center justify-center gap-1.5">
-    <svg
-      className="w-4 h-4"
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M6 18L18 6M6 6l12 12"
-      />
-    </svg>
-    رد شده توسط ادمین
-  </div>
-) :     isExpired ? (
-                        <div className="w-full bg-gray-100 border border-gray-200 text-gray-500 py-2.5 rounded-xl font-bold text-xs text-center flex items-center justify-center gap-1.5">
+                        <Link
+                          href={`/post/${contract.post_id}`}
+                          className="w-8 h-8 lg:w-9 lg:h-9 rounded-full flex items-center justify-center bg-gray-50 hover:bg-blue-50 text-gray-400 hover:text-blue-600 active:scale-90 transition-all shrink-0"
+                          aria-label="مشاهده"
+                        >
                           <svg
                             className="w-4 h-4"
                             fill="none"
@@ -768,456 +857,221 @@ const getStatusBadge = (status: string) => {
                               strokeLinecap="round"
                               strokeLinejoin="round"
                               strokeWidth={2}
-                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                              d="M15 19l-7-7 7-7"
                             />
                           </svg>
-                          حذف شده
-                        </div>
-                      ) : (
-                        <div className="flex gap-2">
-                          <Link
-                            href={`/post/${post.id}`}
-                            className="flex-1 text-center text-xs bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-2.5 rounded-xl font-bold shadow-md shadow-blue-500/30 hover:shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
-                          >
-                            <svg
-                              className="w-4 h-4"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                              />
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                              />
-                            </svg>
-                            مشاهده
-                          </Link>
-                          <button
-                            onClick={() => handleDeletePost(post.id)}
-                            disabled={isDeleting}
-                            className="flex-1 text-xs border-2 border-red-200 text-red-600 py-2.5 rounded-xl font-bold hover:bg-red-50 transition-colors active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-1.5"
-                          >
-                            {isDeleting ? (
-                              <>
-                                <div className="w-3.5 h-3.5 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
-                                در حال حذف...
-                              </>
-                            ) : (
-                              <>
-                                <svg
-                                  className="w-4 h-4"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                  />
-                                </svg>
-                                حذف
-                              </>
-                            )}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })
-            ) : (
-              <div className="bg-white rounded-2xl p-10 text-center shadow-sm">
-                <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center text-4xl">
-                  📝
-                </div>
-                <p className="text-gray-700 font-bold mb-1">هنوز آگهی ندارید</p>
-                <p className="text-sm text-gray-500 mb-6">
-                  اولین آگهی خود را ثبت کنید
-                </p>
-                <Link
-                  href="/create-post"
-                  className="inline-block bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-blue-500/30 hover:shadow-xl transition-all active:scale-[0.98]"
-                >
-                  ثبت آگهی جدید
-                </Link>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* تب پروژه‌ها */}
-        {activeTab === "projects" && (
-          <div className="space-y-4">
-            <div className="bg-white rounded-xl p-1.5 shadow-sm flex">
-              <button
-                onClick={() => setProjectFilter("freelancer")}
-                className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-1.5 ${
-                  projectFilter === "freelancer"
-                    ? "bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-md"
-                    : "text-gray-500 hover:text-gray-700"
-                }`}
-              >
-                <span className="text-base">🔨</span>
-                <span>فریلنسر</span>
-                {freelancerProjects.length > 0 && (
-                  <span
-                    className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
-                      projectFilter === "freelancer"
-                        ? "bg-white/20"
-                        : "bg-gray-100"
-                    }`}
-                  >
-                    {freelancerProjects.length}
-                  </span>
-                )}
-              </button>
-              <button
-                onClick={() => setProjectFilter("client")}
-                className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-1.5 ${
-                  projectFilter === "client"
-                    ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md"
-                    : "text-gray-500 hover:text-gray-700"
-                }`}
-              >
-                <span className="text-base">📋</span>
-                <span>کارفرما</span>
-                {clientProjects.length > 0 && (
-                  <span
-                    className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
-                      projectFilter === "client" ? "bg-white/20" : "bg-gray-100"
-                    }`}
-                  >
-                    {clientProjects.length}
-                  </span>
-                )}
-              </button>
-            </div>
-
-            <div
-              className={`rounded-xl p-3 border-2 ${
-                projectFilter === "freelancer"
-                  ? "bg-green-50 border-green-200"
-                  : "bg-blue-50 border-blue-200"
-              }`}
-            >
-              <p
-                className={`text-xs leading-relaxed ${
-                  projectFilter === "freelancer"
-                    ? "text-green-800"
-                    : "text-blue-800"
-                }`}
-              >
-                {projectFilter === "freelancer"
-                  ? "🔨 پروژه‌هایی که شما به عنوان فریلنسر انجام دادید و کارفرما تأیید کرده است."
-                  : "📋 پروژه‌هایی که شما به عنوان کارفرما سفارش دادید و فریلنسر تحویل داده است."}
-              </p>
-            </div>
-
-            {reviewsLoading ? (
-              <div className="space-y-3">
-                {[1, 2].map((i) => (
-                  <div
-                    key={i}
-                    className="bg-white rounded-2xl p-4 shadow-sm animate-pulse"
-                  >
-                    <div className="h-4 bg-gray-200 rounded w-1/3 mb-3" />
-                    <div className="h-3 bg-gray-100 rounded w-full mb-2" />
-                    <div className="h-3 bg-gray-100 rounded w-2/3" />
-                  </div>
-                ))}
-              </div>
-            ) : filteredProjects.length > 0 ? (
-              <div className="space-y-2.5">
-                {filteredProjects.map((contract) => (
-                  <div
-                    key={contract.contract_id}
-                    className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-all"
-                  >
-                    <div className="flex items-start gap-3">
-                      <div
-                        className={`w-10 h-10 rounded-xl flex items-center justify-center text-white text-lg font-bold shrink-0 shadow-md bg-gradient-to-br ${
-                          projectFilter === "freelancer"
-                            ? "from-green-500 to-emerald-600"
-                            : "from-blue-500 to-indigo-600"
-                        }`}
-                      >
-                        {projectFilter === "freelancer" ? "🔨" : "📋"}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <Link
-                          href={`/post/${contract.post_id}`}
-                          className="font-semibold text-sm text-gray-800 truncate block hover:text-blue-600 mb-1"
-                        >
-                          {contract.post_title}
                         </Link>
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-500 mb-2">
-                          <span className="flex items-center gap-1">
-                            <span>
-                              {projectFilter === "freelancer"
-                                ? "کارفرما:"
-                                : "فریلنسر:"}
-                            </span>
-                            <Link
-                              href={`/user/${contract.other_user_id}`}
-                              className="text-blue-600 font-medium hover:underline"
-                            >
-                              {contract.other_user_name}
-                            </Link>
-                          </span>
-                          <span>•</span>
-                          <span className="flex items-center gap-1">
-                            <span>📅</span>
-                            {formatTimeAgo(contract.completed_at)}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] bg-green-50 text-green-700 px-2 py-0.5 rounded-full font-medium border border-green-200">
-                            ✅ تکمیل شده
-                          </span>
-                        </div>
                       </div>
-                      <Link
-                        href={`/post/${contract.post_id}`}
-                        className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-50 hover:bg-blue-50 text-gray-400 hover:text-blue-600 active:scale-90 transition-all shrink-0"
-                        aria-label="مشاهده"
-                      >
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M15 19l-7-7 7-7"
-                          />
-                        </svg>
-                      </Link>
                     </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="bg-white rounded-2xl p-10 text-center shadow-sm">
-                <div
-                  className={`w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center text-4xl ${
-                    projectFilter === "freelancer"
-                      ? "bg-gradient-to-br from-green-50 to-emerald-100"
-                      : "bg-gradient-to-br from-blue-50 to-indigo-100"
-                  }`}
-                >
-                  {projectFilter === "freelancer" ? "🔨" : "📋"}
+                  ))}
                 </div>
-                <p className="text-gray-700 font-semibold mb-1">
-                  {projectFilter === "freelancer"
-                    ? "هنوز پروژه‌ای به عنوان فریلنسر انجام ندادید"
-                    : "هنوز پروژه‌ای به عنوان کارفرما سفارش ندادید"}
-                </p>
-                <p className="text-sm text-gray-500 mb-5 leading-relaxed">
-                  {projectFilter === "freelancer"
-                    ? "پروژه‌هایی که با موفقیت تحویل می‌دید و کارفرما تأیید می‌کنه اینجا نمایش داده می‌شه"
-                    : "پروژه‌هایی که ثبت می‌کنید و فریلنسر تحویل می‌ده اینجا نمایش داده می‌شه"}
-                </p>
-                {projectFilter === "freelancer" ? (
-                  <Link
-                    href="/explore"
-                    className="inline-block bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-2.5 rounded-xl font-semibold text-sm shadow-lg shadow-green-500/30 hover:shadow-xl active:scale-[0.98] transition-all"
-                  >
-                    جستجوی پروژه
-                  </Link>
-                ) : (
-                  <Link
-                    href="/create-post"
-                    className="inline-block bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-2.5 rounded-xl font-semibold text-sm shadow-lg shadow-blue-500/30 hover:shadow-xl active:scale-[0.98] transition-all"
-                  >
-                    ثبت آگهی جدید
-                  </Link>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* تب نظرات */}
-        {activeTab === "reviews" && (
-          <div className="space-y-4">
-            {reviewsLoading ? (
-              <div className="space-y-3">
-                {[1, 2].map((i) => (
+              ) : (
+                <div className="bg-white rounded-2xl p-10 lg:p-16 text-center shadow-sm">
                   <div
-                    key={i}
-                    className="bg-white rounded-2xl p-4 shadow-sm animate-pulse"
+                    className={`w-20 h-20 lg:w-24 lg:h-24 mx-auto mb-4 lg:mb-6 rounded-full flex items-center justify-center text-4xl lg:text-5xl ${
+                      projectFilter === "freelancer"
+                        ? "bg-gradient-to-br from-green-50 to-emerald-100"
+                        : "bg-gradient-to-br from-blue-50 to-indigo-100"
+                    }`}
                   >
-                    <div className="h-4 bg-gray-200 rounded w-1/3 mb-3" />
-                    <div className="h-3 bg-gray-100 rounded w-full mb-2" />
-                    <div className="h-3 bg-gray-100 rounded w-2/3" />
+                    {projectFilter === "freelancer" ? "🔨" : "📋"}
                   </div>
-                ))}
-              </div>
-            ) : (
-              <>
-                {ratingStats.total > 0 && (
-                  <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-4 shadow-sm">
-                    <div className="flex items-center gap-4">
-                      <div className="text-center shrink-0">
-                        <div className="text-3xl font-bold text-amber-600">
-                          {ratingStats.average.toFixed(1)}
-                        </div>
-                        <div className="flex items-center gap-0.5 mt-0.5">
-                          {[1, 2, 3, 4, 5].map((star) => (
-                            <span key={star} className="text-xs">
-                              {star <= Math.round(ratingStats.average)
-                                ? "⭐"
-                                : "☆"}
-                            </span>
-                          ))}
-                        </div>
-                        <div className="text-[10px] text-amber-700 mt-0.5">
-                          {ratingStats.total} نظر
-                        </div>
-                      </div>
-                      <div className="flex-1 space-y-1">
-                        {[5, 4, 3, 2, 1].map((star) => {
-                          const count =
-                            ratingStats.distribution[
-                              star as keyof typeof ratingStats.distribution
-                            ] || 0;
-                          const percent =
-                            ratingStats.total > 0
-                              ? (count / ratingStats.total) * 100
-                              : 0;
-                          return (
-                            <div key={star} className="flex items-center gap-2">
-                              <span className="text-[10px] text-amber-700 font-medium w-3">
-                                {star}
-                              </span>
-                              <span className="text-[10px]">⭐</span>
-                              <div className="flex-1 bg-white/60 rounded-full h-1.5 overflow-hidden">
-                                <div
-                                  className="bg-gradient-to-r from-amber-400 to-orange-500 h-full rounded-full transition-all"
-                                  style={{ width: `${percent}%` }}
-                                />
-                              </div>
-                              <span className="text-[10px] text-amber-700 font-medium w-4 text-left">
-                                {count}
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                )}
+                  <p className="text-gray-700 font-semibold mb-1 lg:text-lg">
+                    {projectFilter === "freelancer"
+                      ? "هنوز پروژه‌ای به عنوان فریلنسر انجام ندادید"
+                      : "هنوز پروژه‌ای به عنوان کارفرما سفارش ندادید"}
+                  </p>
+                  <p className="text-sm lg:text-base text-gray-500 mb-5 leading-relaxed">
+                    {projectFilter === "freelancer"
+                      ? "پروژه‌هایی که با موفقیت تحویل می‌دید و کارفرما تأیید می‌کنه اینجا نمایش داده می‌شه"
+                      : "پروژه‌هایی که ثبت می‌کنید و فریلنسر تحویل می‌ده اینجا نمایش داده می‌شه"}
+                  </p>
+                  {projectFilter === "freelancer" ? (
+                    <Link
+                      href="/explore"
+                      className="inline-block bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-2.5 rounded-xl font-semibold text-sm shadow-lg shadow-green-500/30 hover:shadow-xl active:scale-[0.98] transition-all"
+                    >
+                      جستجوی پروژه
+                    </Link>
+                  ) : (
+                    <Link
+                      href="/create-post"
+                      className="inline-block bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-2.5 rounded-xl font-semibold text-sm shadow-lg shadow-blue-500/30 hover:shadow-xl active:scale-[0.98] transition-all"
+                    >
+                      ثبت آگهی جدید
+                    </Link>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
-                {reviews.length > 0 ? (
-                  <div className="space-y-2.5">
-                    {reviews.map((review) => (
-                      <div
-                        key={review.id}
-                        className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100"
-                      >
-                        <div className="flex items-start gap-3">
-                          <Link
-                            href={`/user/${review.reviewer_id}`}
-                            className="shrink-0"
-                          >
-                            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
-                              {review.reviewer_name?.charAt(0) || "👤"}
-                            </div>
-                          </Link>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between gap-2 mb-1">
-                              <Link
-                                href={`/user/${review.reviewer_id}`}
-                                className="font-semibold text-sm text-gray-800 truncate hover:text-blue-600"
-                              >
-                                {review.reviewer_name}
-                              </Link>
-                              <span className="text-[10px] text-gray-400 whitespace-nowrap shrink-0">
-                                {formatTimeAgo(review.created_at)}
+          {/* تب نظرات */}
+          {activeTab === "reviews" && (
+            <div className="space-y-4">
+              {reviewsLoading ? (
+                <div className="space-y-3">
+                  {[1, 2].map((i) => (
+                    <div
+                      key={i}
+                      className="bg-white rounded-2xl p-4 shadow-sm animate-pulse"
+                    >
+                      <div className="h-4 bg-gray-200 rounded w-1/3 mb-3" />
+                      <div className="h-3 bg-gray-100 rounded w-full mb-2" />
+                      <div className="h-3 bg-gray-100 rounded w-2/3" />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <>
+                  {ratingStats.total > 0 && (
+                    <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-4 lg:p-6 shadow-sm">
+                      <div className="flex items-center gap-4 lg:gap-6">
+                        <div className="text-center shrink-0">
+                          <div className="text-3xl lg:text-5xl font-bold text-amber-600">
+                            {ratingStats.average.toFixed(1)}
+                          </div>
+                          <div className="flex items-center gap-0.5 mt-0.5 justify-center">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <span key={star} className="text-xs lg:text-base">
+                                {star <= Math.round(ratingStats.average)
+                                  ? "⭐"
+                                  : "☆"}
                               </span>
-                            </div>
-                            <div className="flex items-center gap-1 mb-1.5">
-                              {[1, 2, 3, 4, 5].map((star) => (
-                                <span key={star} className="text-xs">
-                                  {star <= review.rating ? "⭐" : "☆"}
-                                </span>
-                              ))}
-                              <span className="text-[10px] text-amber-700 font-bold mr-1">
-                                {review.rating}/۵
-                              </span>
-                            </div>
-                            {review.comment && (
-                              <p className="text-xs text-gray-600 leading-relaxed">
-                                {review.comment}
-                              </p>
-                            )}
-                            {review.post_title && (
-                              <Link
-                                href={`/post/${review.post_id}`}
-                                className="inline-flex items-center gap-1 mt-2 text-[10px] bg-blue-50 text-blue-700 px-2 py-1 rounded-md hover:bg-blue-100 transition-colors"
-                              >
-                                📋 {review.post_title}
-                              </Link>
-                            )}
+                            ))}
+                          </div>
+                          <div className="text-[10px] lg:text-sm text-amber-700 mt-0.5">
+                            {ratingStats.total} نظر
                           </div>
                         </div>
+                        <div className="flex-1 space-y-1 lg:space-y-1.5">
+                          {[5, 4, 3, 2, 1].map((star) => {
+                            const count =
+                              ratingStats.distribution[
+                                star as keyof typeof ratingStats.distribution
+                              ] || 0;
+                            const percent =
+                              ratingStats.total > 0
+                                ? (count / ratingStats.total) * 100
+                                : 0;
+                            return (
+                              <div key={star} className="flex items-center gap-2">
+                                <span className="text-[10px] lg:text-xs text-amber-700 font-medium w-3">
+                                  {star}
+                                </span>
+                                <span className="text-[10px] lg:text-xs">⭐</span>
+                                <div className="flex-1 bg-white/60 rounded-full h-1.5 lg:h-2 overflow-hidden">
+                                  <div
+                                    className="bg-gradient-to-r from-amber-400 to-orange-500 h-full rounded-full transition-all"
+                                    style={{ width: `${percent}%` }}
+                                  />
+                                </div>
+                                <span className="text-[10px] lg:text-xs text-amber-700 font-medium w-4 text-left">
+                                  {count}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="bg-white rounded-2xl p-10 text-center shadow-sm">
-                    <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-amber-50 to-orange-100 flex items-center justify-center text-4xl">
-                      ⭐
                     </div>
-                    <p className="text-gray-700 font-semibold mb-1">
-                      هنوز نظری ندارید
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      بعد از تکمیل پروژه‌ها، نظرات کاربران اینجا نمایش داده
-                      می‌شود
-                    </p>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        )}
+                  )}
+
+                  {reviews.length > 0 ? (
+                    <div className="space-y-2.5 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
+                      {reviews.map((review) => (
+                        <div
+                          key={review.id}
+                          className="bg-white rounded-2xl p-4 lg:p-5 shadow-sm border border-gray-100"
+                        >
+                          <div className="flex items-start gap-3">
+                            <Link
+                              href={`/user/${review.reviewer_id}`}
+                              className="shrink-0"
+                            >
+                              <div className="w-10 h-10 lg:w-12 lg:h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm lg:text-base font-bold">
+                                {review.reviewer_name?.charAt(0) || "👤"}
+                              </div>
+                            </Link>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-2 mb-1">
+                                <Link
+                                  href={`/user/${review.reviewer_id}`}
+                                  className="font-semibold text-sm lg:text-base text-gray-800 truncate hover:text-blue-600"
+                                >
+                                  {review.reviewer_name}
+                                </Link>
+                                <span className="text-[10px] lg:text-xs text-gray-400 whitespace-nowrap shrink-0">
+                                  {formatTimeAgo(review.created_at)}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1 mb-1.5">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <span key={star} className="text-xs lg:text-sm">
+                                    {star <= review.rating ? "⭐" : "☆"}
+                                  </span>
+                                ))}
+                                <span className="text-[10px] lg:text-xs text-amber-700 font-bold mr-1">
+                                  {review.rating}/۵
+                                </span>
+                              </div>
+                              {review.comment && (
+                                <p className="text-xs lg:text-sm text-gray-600 leading-relaxed">
+                                  {review.comment}
+                                </p>
+                              )}
+                              {review.post_title && (
+                                <Link
+                                  href={`/post/${review.post_id}`}
+                                  className="inline-flex items-center gap-1 mt-2 text-[10px] lg:text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-md hover:bg-blue-100 transition-colors"
+                                >
+                                  📋 {review.post_title}
+                                </Link>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="bg-white rounded-2xl p-10 lg:p-16 text-center shadow-sm">
+                      <div className="w-20 h-20 lg:w-24 lg:h-24 mx-auto mb-4 lg:mb-6 rounded-full bg-gradient-to-br from-amber-50 to-orange-100 flex items-center justify-center text-4xl lg:text-5xl">
+                        ⭐
+                      </div>
+                      <p className="text-gray-700 font-semibold mb-1 lg:text-lg">
+                        هنوز نظری ندارید
+                      </p>
+                      <p className="text-sm lg:text-base text-gray-500">
+                        بعد از تکمیل پروژه‌ها، نظرات کاربران اینجا نمایش داده
+                        می‌شود
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* =====================================================
-          مودال ذخیره شده‌ها
-      ===================================================== */}
+      {/* ===== مودال ذخیره شده‌ها ===== */}
       {activeModal === "saved" && (
         <div
-          className="fixed inset-0 bg-black/60 z-50 flex items-end justify-center animate-fade-in"
+          className="fixed inset-0 bg-black/60 z-50 flex items-end lg:items-center justify-center animate-fade-in"
           onClick={() => setActiveModal(null)}
         >
           <div
-            className="bg-white w-full max-w-md rounded-t-3xl animate-slide-up flex flex-col"
+            className="bg-white w-full max-w-md lg:max-w-3xl rounded-t-3xl lg:rounded-3xl animate-slide-up lg:animate-fade-in flex flex-col"
             style={{ maxHeight: "85vh" }}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* هدر */}
-            <div className="sticky top-0 bg-white rounded-t-3xl border-b border-gray-100 px-5 py-4 flex items-center justify-between shrink-0">
+            <div className="sticky top-0 bg-white rounded-t-3xl lg:rounded-t-3xl border-b border-gray-100 px-5 py-4 flex items-center justify-between shrink-0">
               <div>
-                <h2 className="text-base font-bold text-gray-800 flex items-center gap-2">
+                <h2 className="text-base lg:text-lg font-bold text-gray-800 flex items-center gap-2">
                   <span>❤️</span> ذخیره شده‌ها
                 </h2>
                 {savedPosts.length > 0 && (
-                  <p className="text-[10px] text-gray-500 mt-0.5">
+                  <p className="text-[10px] lg:text-xs text-gray-500 mt-0.5">
                     {savedPosts.length} آگهی
                   </p>
                 )}
@@ -1243,11 +1097,10 @@ const getStatusBadge = (status: string) => {
               </button>
             </div>
 
-            {/* محتوا */}
-            <div className="overflow-y-auto flex-1 p-4">
+            <div className="overflow-y-auto flex-1 p-4 lg:p-6">
               {savedLoading ? (
-                <div className="space-y-3">
-                  {[1, 2, 3].map((i) => (
+                <div className="space-y-3 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
+                  {[1, 2, 3, 4].map((i) => (
                     <div
                       key={i}
                       className="bg-gray-50 rounded-2xl p-4 animate-pulse"
@@ -1259,7 +1112,7 @@ const getStatusBadge = (status: string) => {
                   ))}
                 </div>
               ) : savedPosts.length > 0 ? (
-                <div className="space-y-3">
+                <div className="space-y-3 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
                   {savedPosts.map((post) => (
                     <div key={post.id} className="relative">
                       <PostCard
@@ -1285,10 +1138,10 @@ const getStatusBadge = (status: string) => {
                   <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-pink-50 to-red-100 flex items-center justify-center text-4xl">
                     ❤️
                   </div>
-                  <p className="text-gray-700 font-semibold mb-1">
+                  <p className="text-gray-700 font-semibold mb-1 lg:text-lg">
                     هیچ آگهی ذخیره‌ای ندارید
                   </p>
-                  <p className="text-sm text-gray-500 mb-6 leading-relaxed px-4">
+                  <p className="text-sm lg:text-base text-gray-500 mb-6 leading-relaxed px-4">
                     آگهی‌های مورد علاقه خود را ذخیره کنید تا بعداً ببینید
                   </p>
                   <button
@@ -1308,39 +1161,20 @@ const getStatusBadge = (status: string) => {
       )}
 
       <style>{`
-        .hide-scrollbar::-webkit-scrollbar {
-          display: none;
-        }
-        .hide-scrollbar {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
         @keyframes slide-up {
-          from {
-            transform: translateY(100%);
-            opacity: 0.5;
-          }
-          to {
-            transform: translateY(0);
-            opacity: 1;
-          }
+          from { transform: translateY(100%); opacity: 0.5; }
+          to { transform: translateY(0); opacity: 1; }
         }
-        .animate-slide-up {
-          animation: slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-        }
+        .animate-slide-up { animation: slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
 
         @keyframes fade-in {
-          from {
-            opacity: 0;
-          }
-          to {
-            opacity: 1;
-          }
+          from { opacity: 0; transform: scale(0.98); }
+          to { opacity: 1; transform: scale(1); }
         }
-        .animate-fade-in {
-          animation: fade-in 0.2s ease-out;
-        }
+        .animate-fade-in { animation: fade-in 0.2s ease-out; }
       `}</style>
     </div>
   );
