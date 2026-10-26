@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/hooks/useAuth";
 import { postsAPI } from "@/app/services/api";
@@ -20,6 +20,10 @@ export default function CreatePostPage() {
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // 🔑 ref برای اسکرول به بالای صفحه
+  const headerRef = useRef<HTMLDivElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+
   const [formData, setFormData] = useState({
     title: "",
     category: "",
@@ -32,7 +36,7 @@ export default function CreatePostPage() {
   });
 
   const [deadlineDays, setDeadlineDays] = useState<number | "custom" | null>(
-    null,
+    null
   );
   const [customDays, setCustomDays] = useState("");
   const [skillInput, setSkillInput] = useState("");
@@ -40,6 +44,19 @@ export default function CreatePostPage() {
   useEffect(() => {
     if (!loading && !token) router.push("/login");
   }, [token, loading, router]);
+
+  // 🔑 اسکرول به بالای صفحه هر بار که step عوض شد
+  useEffect(() => {
+    // کمی تأخیر که UI رندر بشه
+    const t = setTimeout(() => {
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      });
+    }, 50);
+
+    return () => clearTimeout(t);
+  }, [step]);
 
   if (loading) {
     return (
@@ -56,13 +73,17 @@ export default function CreatePostPage() {
   const handleChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >,
+    >
   ) => {
     const { name, value } = e.target;
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
 
     if (name === "category") {
       setFormData((prev) => ({ ...prev, category: value, sub_category: "" }));
+    } else if (name === "price") {
+      // 🔑 فقط عدد قبول کن
+      const numericValue = value.replace(/\D/g, "");
+      setFormData((prev) => ({ ...prev, price: numericValue }));
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
@@ -105,13 +126,18 @@ export default function CreatePostPage() {
     if (currentStep === 2) {
       if (!formData.description.trim())
         newErrors.description = "توضیحات را وارد کنید";
-      if (
-        formData.price_type !== "contact" &&
-        formData.price &&
-        !/^\d+$/.test(formData.price.replace(/,/g, ""))
-      ) {
-        newErrors.price = "مبلغ را به عدد وارد کنید";
+
+      // 🔑 اگه price_type != contact، قیمت اجباریه
+      if (formData.price_type !== "contact") {
+        const priceNum = Number(formData.price.replace(/,/g, ""));
+
+        if (!formData.price.trim()) {
+          newErrors.price = "قیمت را وارد کنید";
+        } else if (isNaN(priceNum) || priceNum <= 0) {
+          newErrors.price = "قیمت باید بیشتر از صفر باشد";
+        }
       }
+
       if (deadlineDays === "custom") {
         const n = Number(customDays);
         if (!customDays || n < 1 || n > 365) {
@@ -130,7 +156,7 @@ export default function CreatePostPage() {
 
   const computeDeadline = (): string => {
     const days =
-      deadlineDays === "custom" ? Number(customDays) : (deadlineDays ?? 0);
+      deadlineDays === "custom" ? Number(customDays) : deadlineDays ?? 0;
     if (!days || days < 1) return "";
     const d = new Date();
     d.setDate(d.getDate() + days);
@@ -176,10 +202,18 @@ export default function CreatePostPage() {
         ? DEADLINE_OPTIONS.find((o) => o.days === deadlineDays)?.label || ""
         : "";
 
+  // فرمت قیمت با جداکننده هزارگان برای پیش‌نمایش
+  const formattedPrice = formData.price
+    ? Number(formData.price).toLocaleString("fa-IR")
+    : "";
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-blue-50/30 pb-24">
       {/* هدر */}
-      <div className="bg-white/95 backdrop-blur-md border-b border-gray-200 shadow-sm sticky top-0 z-20">
+      <div
+        ref={headerRef}
+        className="bg-white/95 backdrop-blur-md border-b border-gray-200 shadow-sm sticky top-0 z-20"
+      >
         <div className="flex items-center gap-2 px-4 py-3">
           <button
             onClick={() => router.back()}
@@ -275,7 +309,7 @@ export default function CreatePostPage() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="p-4">
+      <form ref={formRef} onSubmit={handleSubmit} className="p-4">
         {/* --- مرحله ۱ --- */}
         {step === 1 && (
           <div className="space-y-5 animate-fade-in">
@@ -449,7 +483,12 @@ export default function CreatePostPage() {
                       key={type.value}
                       type="button"
                       onClick={() =>
-                        setFormData({ ...formData, price_type: type.value })
+                        setFormData({
+                          ...formData,
+                          price_type: type.value,
+                          // 🔑 اگه توافقی شد، قیمت رو پاک کن
+                          price: type.value === "contact" ? "" : formData.price,
+                        })
                       }
                       className={`p-3 rounded-xl border-2 text-center transition-all ${
                         isActive
@@ -475,7 +514,10 @@ export default function CreatePostPage() {
               <div className="animate-fade-in">
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   مبلغ{" "}
-                  {formData.price_type === "fixed" ? "(کل پروژه)" : "(ساعتی)"}
+                  {formData.price_type === "fixed"
+                    ? "(کل پروژه)"
+                    : "(ساعتی)"}{" "}
+                  <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <input
@@ -501,6 +543,10 @@ export default function CreatePostPage() {
                     <span>⚠️</span> {errors.price}
                   </p>
                 )}
+                <p className="text-[10px] text-gray-500 mt-1.5 flex items-center gap-1">
+                  <span>💡</span>
+                  مبلغ را به تومان وارد کنید (بدون اعشار)
+                </p>
               </div>
             )}
 
@@ -688,7 +734,7 @@ export default function CreatePostPage() {
                   type="button"
                   onClick={() => {
                     setDeadlineDays(
-                      deadlineDays === "custom" ? null : "custom",
+                      deadlineDays === "custom" ? null : "custom"
                     );
                     setCustomDays("");
                   }}
@@ -795,8 +841,8 @@ export default function CreatePostPage() {
                     >
                       {formData.price_type === "contact"
                         ? "توافقی"
-                        : formData.price
-                          ? `${formData.price} تومان`
+                        : formattedPrice
+                          ? `${formattedPrice} تومان`
                           : "—"}
                     </div>
                     {formData.price_type === "hourly" && (

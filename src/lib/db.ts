@@ -19,21 +19,20 @@ const pool = mysql.createPool({
   dateStrings: false,
 });
 
-// 🔑 جلوگیری از کرش روی خطای connection
 (pool as any).on('connection', (connection: any) => {
   connection.on('error', (err: any) => {
     console.error('MySQL connection error:', err.message);
   });
 });
 
-// 🔑 جلوگیری از کرش روی خطای pool
 (pool as any).on('error', (err: any) => {
   console.error('MySQL pool error:', err.message);
 });
 
+// 🔑 استفاده از query به جای execute
 export async function query(sql: string, params?: any[]) {
   try {
-    const [rows] = await pool.execute(sql, params);
+    const [rows] = await pool.query(sql, params);
     return rows;
   } catch (error: any) {
     console.error('Database error:', error.message);
