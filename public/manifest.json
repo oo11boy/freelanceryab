@@ -1,7 +1,7 @@
 {
-  "name": "فریلنسرکار",
-  "short_name": "فریلنسرکار",
-  "description": "بازار کارهای آنلاین",
+  "name": "فریلنسریاب",
+  "short_name": "فریلنسریاب",
+  "description": "بازار آنلاین پروژه‌ها و فرصت‌های فریلنسری",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
@@ -16,6 +16,18 @@
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "/icons/icon-192.png",
