@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { authAPI } from "../services/api";
 import { useAuth } from "../hooks/useAuth";
+import Image from "next/image";
 
 // تبدیل ارقام فارسی/عربی به لاتین و حذف غیررقم
 const normalizeDigits = (s: string) =>
@@ -183,8 +184,11 @@ export default function LoginPage() {
       <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
         {/* لوگو */}
         <div className="text-center mb-8">
-          <div className="text-6xl mb-3">🚀</div>
-          <h1 className="text-2xl font-bold text-gray-800">فریلنسرکار</h1>
+          <div className="text-6xl mb-3 m-auto w-fit">
+                           <Image src="/icons/iconapp.png" className=" rounded-lg" alt="لوگو" width={100} height={50} />
+                  
+          </div>
+          <h1 className="text-2xl font-bold text-gray-800">فریلنسریاب</h1>
           <p className="text-gray-500 mt-2">بازار کارهای آنلاین</p>
         </div>
 
@@ -236,9 +240,7 @@ export default function LoginPage() {
               {loading ? "در حال ارسال..." : "ادامه"}
             </button>
 
-            <div className="text-center text-sm text-gray-400">
-              <p>ورود برای همه کاربران آزاد است</p>
-            </div>
+      
           </div>
         )}
 
@@ -303,7 +305,7 @@ export default function LoginPage() {
               disabled={loading}
               className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold text-lg disabled:bg-green-400 transition-all hover:bg-green-700"
             >
-              {loading ? "در حال تأیید..." : "ورود به فریلنسرکار"}
+              {loading ? "در حال تأیید..." : "ورود به فریلنسریاب"}
             </button>
 
             <div className="text-center">
@@ -335,10 +337,7 @@ export default function LoginPage() {
           <Link href="/rules" className="mx-2 hover:text-gray-600">
             قوانین
           </Link>
-          <span className="text-gray-300">|</span>
-          <Link href="/contact" className="mx-2 hover:text-gray-600">
-            تماس با ما
-          </Link>
+     
         </div>
       </div>
     </div>

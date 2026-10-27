@@ -4,7 +4,7 @@ import { query } from "@/lib/db";
 
 const BASE_URL =
   process.env.NEXT_PUBLIC_SITE_URL || "https://freelancerkar.com";
-const SITE_NAME = "فریلنسرکار";
+const SITE_NAME = "فریلنسریاب";
 
 // ===================================================
 // 📊 گرفتن کاربر از DB
@@ -32,7 +32,7 @@ async function getUser(id: number) {
          WHERE reviewee_id = u.id) AS avg_rating
        FROM users u
        WHERE u.id = ? AND (u.is_active IS NULL OR u.is_active = 1)`,
-      [id]
+      [id],
     );
     return rows[0] || null;
   } catch (err) {
@@ -46,7 +46,10 @@ async function getUser(id: number) {
 // ===================================================
 function cleanText(text: string | null | undefined): string {
   if (!text) return "";
-  return text.replace(/\s+/g, " ").replace(/[\r\n\t]/g, " ").trim();
+  return text
+    .replace(/\s+/g, " ")
+    .replace(/[\r\n\t]/g, " ")
+    .trim();
 }
 
 function truncate(text: string, max: number): string {
@@ -141,7 +144,7 @@ function buildDescription(user: any): string {
   }
 
   // CTA
-  parts.push("مشاهده پروفایل کامل و ارسال پیام در فریلنسرکار.");
+  parts.push("مشاهده پروفایل کامل و ارسال پیام در فریلنسریاب.");
 
   return truncate(parts.join(" — "), 158);
 }
@@ -170,7 +173,7 @@ export async function generateMetadata({
   if (!user || user.role === "admin") {
     return {
       title: "پروفایل یافت نشد",
-      description: "این پروفایل در فریلنسرکار وجود ندارد.",
+      description: "این پروفایل در فریلنسریاب وجود ندارد.",
       robots: { index: false, follow: false },
     };
   }
@@ -191,7 +194,7 @@ export async function generateMetadata({
     ...skills.slice(0, 5),
     user.experience ? EXPERIENCE_LABELS[user.experience] : "",
     "فریلنسر",
-    "فریلنسرکار",
+    "فریلنسریاب",
     "پروفایل فریلنسر",
   ].filter(Boolean) as string[];
 

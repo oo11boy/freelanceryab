@@ -1,8 +1,8 @@
-'use client';
-import { useState, useEffect } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
-import Link from 'next/link';
-import { useAuth } from '@/app/hooks/useAuth';
+"use client";
+import { useState, useEffect } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import Link from "next/link";
+import { useAuth } from "@/app/hooks/useAuth";
 
 interface MenuItem {
   href: string;
@@ -13,14 +13,14 @@ interface MenuItem {
 }
 
 const menuItems: MenuItem[] = [
-  { href: '/admin', label: 'داشبورد', icon: '📊', exact: true },
-  { href: '/admin/users', label: 'کاربران', icon: '👥' },
-  { href: '/admin/posts', label: 'آگهی‌ها', icon: '📝' },
-  { href: '/admin/categories', label: 'دسته‌بندی‌ها', icon: '🗂️' },
-  { href: '/admin/contracts', label: 'قراردادها', icon: '💼' },
-  { href: '/admin/reports', label: 'گزارش‌ها', icon: '🚨' },
-  { href: '/admin/notifications', label: 'اعلانات', icon: '🔔' },
-  { href: '/admin/settings', label: 'تنظیمات', icon: '⚙️' },
+  { href: "/admin", label: "داشبورد", icon: "📊", exact: true },
+  { href: "/admin/users", label: "کاربران", icon: "👥" },
+  { href: "/admin/posts", label: "آگهی‌ها", icon: "📝" },
+  { href: "/admin/categories", label: "دسته‌بندی‌ها", icon: "🗂️" },
+  { href: "/admin/contracts", label: "قراردادها", icon: "💼" },
+  { href: "/admin/reports", label: "گزارش‌ها", icon: "🚨" },
+  { href: "/admin/notifications", label: "اعلانات", icon: "🔔" },
+  { href: "/admin/settings", label: "تنظیمات", icon: "⚙️" },
 ];
 
 export default function AdminLayout({
@@ -36,11 +36,11 @@ export default function AdminLayout({
   useEffect(() => {
     if (loading) return;
     if (!token) {
-      router.push('/login');
+      router.push("/login");
       return;
     }
-    if (user && (user as any).role !== 'admin') {
-      router.push('/');
+    if (user && (user as any).role !== "admin") {
+      router.push("/");
     }
   }, [user, token, loading, router]);
 
@@ -48,7 +48,7 @@ export default function AdminLayout({
     setSidebarOpen(false);
   }, [pathname]);
 
-  if (loading || !user || (user as any).role !== 'admin') {
+  if (loading || !user || (user as any).role !== "admin") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
@@ -77,7 +77,7 @@ export default function AdminLayout({
       {/* Sidebar */}
       <aside
         className={`fixed top-0 right-0 h-full w-64 bg-white shadow-xl z-50 transform transition-transform duration-300 ${
-          sidebarOpen ? 'translate-x-0' : 'translate-x-full'
+          sidebarOpen ? "translate-x-0" : "translate-x-full"
         } lg:translate-x-0`}
       >
         {/* لوگو */}
@@ -90,9 +90,7 @@ export default function AdminLayout({
               <div className="text-sm font-bold text-gray-800 leading-tight">
                 پنل مدیریت
               </div>
-              <div className="text-[10px] text-gray-500">
-                فریلنسرکار
-              </div>
+              <div className="text-[10px] text-gray-500">فریلنسریاب</div>
             </div>
           </Link>
         </div>
@@ -104,16 +102,16 @@ export default function AdminLayout({
             return (
               <Link
                 key={item.href}
-                href={item.disabled ? '#' : item.href}
+                href={item.disabled ? "#" : item.href}
                 onClick={(e) => {
                   if (item.disabled) e.preventDefault();
                 }}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
                   item.disabled
-                    ? 'text-gray-400 cursor-not-allowed'
+                    ? "text-gray-400 cursor-not-allowed"
                     : active
-                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md'
-                    : 'text-gray-600 hover:bg-gray-50'
+                      ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md"
+                      : "text-gray-600 hover:bg-gray-50"
                 }`}
               >
                 <span className="text-lg">{item.icon}</span>
@@ -179,7 +177,7 @@ export default function AdminLayout({
             <h1 className="text-sm font-bold text-gray-800">پنل مدیریت</h1>
           </div>
           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold">
-            {user.full_name?.charAt(0) || '👤'}
+            {user.full_name?.charAt(0) || "👤"}
           </div>
         </header>
 

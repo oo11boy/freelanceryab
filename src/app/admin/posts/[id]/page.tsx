@@ -5,7 +5,11 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { postsAPI, savedAPI, messagesAPI } from "@/app/services/api";
 import { useAuth } from "@/app/hooks/useAuth";
-import { useCategories, categoryLabel, categoryIcon } from "@/app/hooks/useCategories";
+import {
+  useCategories,
+  categoryLabel,
+  categoryIcon,
+} from "@/app/hooks/useCategories";
 import ReportModal from "@/app/components/ReportModal";
 
 interface Post {
@@ -32,7 +36,7 @@ interface PostOwner {
 }
 
 export default function PostDetailPage() {
-    const { categories } = useCategories();
+  const { categories } = useCategories();
   const params = useParams();
   const router = useRouter();
   const { user, token } = useAuth();
@@ -220,7 +224,7 @@ export default function PostDetailPage() {
   }
 
   const isOwner = user?.id === post.user_id;
-  const ownerName = owner?.full_name || "کاربر فریلنسرکار";
+  const ownerName = owner?.full_name || "کاربر فریلنسریاب";
   const priceLabel =
     post.price_type === "contact" ? "توافقی" : `${post.price} تومان`;
   const priceTypeLabel =
@@ -232,8 +236,7 @@ export default function PostDetailPage() {
   const deadlineStatus = post.deadline
     ? getDeadlineStatus(post.deadline)
     : null;
-const displayCategory = categoryLabel(categories, post.category);
-
+  const displayCategory = categoryLabel(categories, post.category);
 
   return (
     <div className="min-h-screen bg-gray-50 pb-28">
@@ -348,7 +351,7 @@ const displayCategory = categoryLabel(categories, post.category);
             href={`/explore?category=${encodeURIComponent(post.category)}`}
             className="inline-flex items-center gap-1.5 bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-medium mb-3 hover:bg-blue-100 transition-colors"
           >
-           <span>{categoryIcon(categories, post.category)}</span>
+            <span>{categoryIcon(categories, post.category)}</span>
             {displayCategory}
             {post.sub_category && (
               <>

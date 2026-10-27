@@ -3,7 +3,7 @@ export default function HeroSection() {
     <section className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white py-16">
       <div className="container mx-auto px-4 text-center">
         <h1 className="text-4xl md:text-5xl font-bold mb-4">
-          به فریلنسرکار خوش آمدید
+          به فریلنسریاب خوش آمدید
         </h1>
         <p className="text-xl md:text-2xl mb-8">
           جایگاه امن برای یافتن متخصص و انجام پروژه‌های آنلاین

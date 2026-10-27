@@ -5,7 +5,11 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { postsAPI, savedAPI, messagesAPI } from "@/app/services/api";
 import { useAuth } from "@/app/hooks/useAuth";
-import { useCategories, categoryLabel, categoryIcon } from "@/app/hooks/useCategories";
+import {
+  useCategories,
+  categoryLabel,
+  categoryIcon,
+} from "@/app/hooks/useCategories";
 import ReportModal from "@/app/components/ReportModal";
 
 interface Post {
@@ -190,7 +194,10 @@ export default function PostDetailPage() {
           <div className="lg:grid lg:grid-cols-[1fr_380px] lg:gap-6">
             <div className="space-y-4">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="bg-white rounded-2xl p-4 lg:p-6 animate-pulse">
+                <div
+                  key={i}
+                  className="bg-white rounded-2xl p-4 lg:p-6 animate-pulse"
+                >
                   <div className="h-5 bg-gray-200 rounded w-3/4 mb-3" />
                   <div className="h-4 bg-gray-100 rounded w-1/2 mb-2" />
                   <div className="h-4 bg-gray-100 rounded w-2/3" />
@@ -230,7 +237,7 @@ export default function PostDetailPage() {
   }
 
   const isOwner = user?.id === post.user_id;
-  const ownerName = owner?.full_name || "کاربر فریلنسرکار";
+  const ownerName = owner?.full_name || "کاربر فریلنسریاب";
   const priceLabel =
     post.price_type === "contact" ? "توافقی" : `${post.price} تومان`;
   const priceTypeLabel =
@@ -272,7 +279,11 @@ export default function PostDetailPage() {
     post.status !== "active" ? statusMessages[post.status] : null;
 
   // 🔑 دکمه‌های اقدام (برای موبایل footer و دسکتاپ sidebar)
-  const ActionButtons = ({ variant = "mobile" }: { variant?: "mobile" | "desktop" }) => (
+  const ActionButtons = ({
+    variant = "mobile",
+  }: {
+    variant?: "mobile" | "desktop";
+  }) => (
     <div className="flex gap-2">
       <button
         onClick={handleSave}
@@ -326,8 +337,13 @@ export default function PostDetailPage() {
   const PriceCard = () => (
     <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-xl p-3.5 lg:p-4 border border-emerald-100 flex items-center justify-between">
       <div>
-        <div className="text-[10px] lg:text-xs text-emerald-700 mb-0.5">قیمت</div>
-        <div className="text-xl lg:text-2xl font-bold text-emerald-700" dir="ltr">
+        <div className="text-[10px] lg:text-xs text-emerald-700 mb-0.5">
+          قیمت
+        </div>
+        <div
+          className="text-xl lg:text-2xl font-bold text-emerald-700"
+          dir="ltr"
+        >
           {priceLabel}
         </div>
       </div>
@@ -426,7 +442,10 @@ export default function PostDetailPage() {
             خانه
           </Link>
           <span className="text-gray-300">/</span>
-          <Link href="/explore" className="hover:text-blue-600 transition-colors">
+          <Link
+            href="/explore"
+            className="hover:text-blue-600 transition-colors"
+          >
             جستجوی پروژه
           </Link>
           <span className="text-gray-300">/</span>
@@ -497,7 +516,6 @@ export default function PostDetailPage() {
       {/* ===== محتوا ===== */}
       <div className="max-w-7xl mx-auto lg:px-6 lg:mt-6">
         <div className="lg:grid lg:grid-cols-[1fr_380px] lg:gap-6">
-
           {/* ===== ستون اصلی ===== */}
           <div className="p-4 lg:p-0 space-y-4 lg:space-y-5">
             {/* کارت اصلی */}
@@ -612,7 +630,9 @@ export default function PostDetailPage() {
                     ⏳
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-xs text-gray-500 mb-0.5">مهلت انجام</div>
+                    <div className="text-xs text-gray-500 mb-0.5">
+                      مهلت انجام
+                    </div>
                     <div className="font-bold text-gray-800 text-sm lg:text-base">
                       {formatDeadline(post.deadline)}
                     </div>
@@ -734,7 +754,8 @@ export default function PostDetailPage() {
                     <li className="flex items-start gap-1.5">
                       <span className="text-amber-500 shrink-0">•</span>
                       <span>
-                        برای ارتباط و پرداخت، فقط از طریق همین پلتفرم اقدام کنید.
+                        برای ارتباط و پرداخت، فقط از طریق همین پلتفرم اقدام
+                        کنید.
                       </span>
                     </li>
                     <li className="flex items-start gap-1.5">
@@ -774,9 +795,13 @@ export default function PostDetailPage() {
                 <PriceCard />
 
                 <div className="mt-4">
-                  {!isOwner && post.status === "active" && <ActionButtons variant="desktop" />}
+                  {!isOwner && post.status === "active" && (
+                    <ActionButtons variant="desktop" />
+                  )}
                   {!isOwner && statusInfo && (
-                    <div className={`rounded-xl p-3 text-center border-2 ${statusInfo.cls}`}>
+                    <div
+                      className={`rounded-xl p-3 text-center border-2 ${statusInfo.cls}`}
+                    >
                       <p className="text-xs font-semibold">{statusInfo.text}</p>
                     </div>
                   )}
@@ -793,7 +818,9 @@ export default function PostDetailPage() {
 
               {/* کارت آگهی‌دهنده */}
               <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-                <h3 className="text-sm font-bold text-gray-800 mb-3">آگهی‌دهنده</h3>
+                <h3 className="text-sm font-bold text-gray-800 mb-3">
+                  آگهی‌دهنده
+                </h3>
                 <div className="flex items-center gap-3">
                   <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-xl text-white font-bold shadow-md shrink-0">
                     {ownerName.charAt(0)}
@@ -830,20 +857,28 @@ export default function PostDetailPage() {
 
               {/* کارت اطلاعات سریع */}
               <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-                <h3 className="text-sm font-bold text-gray-800 mb-3">اطلاعات آگهی</h3>
+                <h3 className="text-sm font-bold text-gray-800 mb-3">
+                  اطلاعات آگهی
+                </h3>
                 <div className="space-y-3 text-sm">
                   <div className="flex items-center justify-between">
                     <span className="text-gray-500">تعداد بازدید</span>
-                    <span className="font-semibold text-gray-800">{post.views}</span>
+                    <span className="font-semibold text-gray-800">
+                      {post.views}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-gray-500">تاریخ ثبت</span>
-                    <span className="font-semibold text-gray-800">{formatRelativeDate(post.created_at)}</span>
+                    <span className="font-semibold text-gray-800">
+                      {formatRelativeDate(post.created_at)}
+                    </span>
                   </div>
                   {post.location && (
                     <div className="flex items-center justify-between">
                       <span className="text-gray-500">موقعیت</span>
-                      <span className="font-semibold text-gray-800">{post.location}</span>
+                      <span className="font-semibold text-gray-800">
+                        {post.location}
+                      </span>
                     </div>
                   )}
                   <div className="flex items-center justify-between">
@@ -855,7 +890,13 @@ export default function PostDetailPage() {
                           : "bg-gray-100 text-gray-700"
                       }`}
                     >
-                      {post.status === "active" ? "فعال" : post.status === "locked" ? "قفل شده" : post.status === "completed" ? "تکمیل شده" : post.status}
+                      {post.status === "active"
+                        ? "فعال"
+                        : post.status === "locked"
+                          ? "قفل شده"
+                          : post.status === "completed"
+                            ? "تکمیل شده"
+                            : post.status}
                     </span>
                   </div>
                 </div>
@@ -875,7 +916,9 @@ export default function PostDetailPage() {
       {/* ===== پیام وضعیت موبایل ===== */}
       {!isOwner && statusInfo && (
         <div className="lg:hidden fixed bottom-16 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-200 p-3 max-w-md mx-auto shadow-lg z-30 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
-          <div className={`rounded-xl p-3 text-center border-2 ${statusInfo.cls}`}>
+          <div
+            className={`rounded-xl p-3 text-center border-2 ${statusInfo.cls}`}
+          >
             <p className="text-xs font-semibold">{statusInfo.text}</p>
           </div>
         </div>

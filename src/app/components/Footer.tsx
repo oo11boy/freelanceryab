@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 export default function Footer() {
@@ -16,10 +17,11 @@ export default function Footer() {
         <div className="text-center mb-6">
           <div className="inline-flex items-center gap-2 mb-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-xl shadow-lg shadow-blue-500/20">
-              🚀
+                          <Image src="/icons/iconapp.png" className=" rounded-lg" alt="لوگو" width={100} height={50} />
+                 
             </div>
             <div className="text-right">
-              <div className="font-bold text-base">فریلنسرکار</div>
+              <div className="font-bold text-base">فریلنسریاب</div>
               <div className="text-[10px] text-gray-400">
                 بازار کارهای آنلاین
               </div>
@@ -45,12 +47,10 @@ export default function Footer() {
           ))}
         </div>
 
-
-
         {/* خط جداکننده */}
         <div className="border-t border-white/10 pt-4 space-y-1.5 text-center">
           <p className="text-[11px] text-gray-400">
-            © ۱۴۰۳ فریلنسرکار — تمامی حقوق محفوظ است
+            © ۱۴۰۳ فریلنسریاب — تمامی حقوق محفوظ است
           </p>
           <p className="text-[10px] text-gray-500 flex items-center justify-center gap-1">
             ساخته شده با
@@ -69,10 +69,11 @@ export default function Footer() {
             <div className="col-span-4">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-2xl shadow-lg shadow-blue-500/20">
-                  🚀
+                             <Image src="/icons/iconapp.png" className=" rounded-lg" alt="لوگو" width={100} height={50} />
+                    
                 </div>
                 <div>
-                  <div className="font-bold text-lg">فریلنسرکار</div>
+                  <div className="font-bold text-lg">فریلنسریاب</div>
                   <div className="text-xs text-gray-400">
                     بازار کارهای آنلاین
                   </div>
@@ -82,8 +83,6 @@ export default function Footer() {
                 پل ارتباطی متخصصان و کارفرمایان آنلاین — جایی که مهارت‌ها به
                 فرصت تبدیل می‌شوند.
               </p>
-
-     
             </div>
 
             {/* ستون ۲: دسترسی سریع (۳ ستون) */}
@@ -108,8 +107,6 @@ export default function Footer() {
                 ))}
               </ul>
             </div>
-
-     
 
             {/* ستون ۴: تماس و شبکه‌های اجتماعی (۲ ستون) */}
             <div className="col-span-2">
@@ -136,7 +133,7 @@ export default function Footer() {
                     قوانین
                   </Link>
                 </li>
-               
+
                 <li>
                   <a
                     href="https://instagram.com/unicodewebdesign"
@@ -155,7 +152,7 @@ export default function Footer() {
           {/* پایین فوتر: کپی‌رایت */}
           <div className="border-t border-white/10 pt-6 flex items-center justify-between flex-wrap gap-4">
             <p className="text-xs text-gray-400">
-              © ۱۴۰۳ فریلنسرکار — تمامی حقوق محفوظ است
+              © ۱۴۰۳ فریلنسریاب — تمامی حقوق محفوظ است
             </p>
             <p className="text-xs text-gray-500 flex items-center gap-1">
               ساخته شده با

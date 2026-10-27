@@ -70,10 +70,7 @@ export default function HomePage() {
             <div className="relative lg:flex lg:items-center lg:justify-between lg:gap-10">
               {/* متن هیرو */}
               <div className="lg:flex-1 lg:max-w-2xl">
-                <div className="inline-flex items-center gap-1.5 bg-white/20 backdrop-blur-sm rounded-full px-3 py-1 text-xs mb-3 lg:mb-4 lg:text-sm lg:px-4">
-                  <span className="w-1.5 h-1.5 lg:w-2 lg:h-2 bg-green-400 rounded-full animate-pulse" />
-                  <span>پلتفرم فعال</span>
-                </div>
+       
                 <h2 className="text-xl lg:text-4xl font-bold mb-1.5 lg:mb-3 leading-tight lg:leading-tight text-white">
                   پروژه بعدی‌ات را پیدا کن! 🎯
                 </h2>

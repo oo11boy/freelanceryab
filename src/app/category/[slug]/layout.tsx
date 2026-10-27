@@ -4,7 +4,7 @@ import { query } from "@/lib/db";
 
 const BASE_URL =
   process.env.NEXT_PUBLIC_SITE_URL || "https://freelancerkar.com";
-const SITE_NAME = "فریلنسرکار";
+const SITE_NAME = "فریلنسریاب";
 
 // ===================================================
 // 📊 گرفتن دسته از DB
@@ -13,7 +13,7 @@ async function getCategory(slug: string) {
   try {
     const rows = await query<any>(
       `SELECT * FROM categories WHERE slug = ? LIMIT 1`,
-      [slug]
+      [slug],
     );
     return rows[0] || null;
   } catch (err) {
@@ -30,7 +30,7 @@ async function getActivePostCount(dbName: string): Promise<number> {
     const rows = await query<{ c: number }>(
       `SELECT COUNT(*) as c FROM posts
        WHERE category = ? AND status = 'active'`,
-      [dbName]
+      [dbName],
     );
     return Number(rows[0]?.c || 0);
   } catch {
@@ -43,12 +43,7 @@ async function getActivePostCount(dbName: string): Promise<number> {
 // ===================================================
 function extractSubs(cat: any): string[] {
   if (!cat) return [];
-  const candidates = [
-    cat.subs,
-    cat.sub,
-    cat.subcategories,
-    cat.sub_category,
-  ];
+  const candidates = [cat.subs, cat.sub, cat.subcategories, cat.sub_category];
 
   for (const raw of candidates) {
     if (!raw) continue;
@@ -83,26 +78,22 @@ function extractSubs(cat: any): string[] {
 // ===================================================
 // 🎯 عنوان‌های بهینه بر اساس آخرین اصول سئو
 // ===================================================
-function buildTitle(
-  name: string,
-  postCount: number,
-  subs: string[]
-): string {
+function buildTitle(name: string, postCount: number, subs: string[]): string {
   // قالب ۱: با تعداد آگهی (اگر >= 3)
   if (postCount >= 3) {
-    // «{تعداد} پروژه {دسته} | استخدام فریلنسر {دسته} — فریلنسرکار»
-    const title = `${postCount} پروژه ${name} | استخدام فریلنسر ${name} | فریلنسرکار`;
+    // «{تعداد} پروژه {دسته} | استخدام فریلنسر {دسته} — فریلنسریاب»
+    const title = `${postCount} پروژه ${name} | استخدام فریلنسر ${name} | فریلنسریاب`;
     // اگر خیلی بلند شد، کوتاه کن
     if (title.length <= 65) return title;
   }
 
   // قالب ۲: بدون تعداد (اگر آگهی کم بود)
-  // «پروژه‌های {دسته} | استخدام فریلنسر {دسته} — فریلنسرکار»
-  const title = `پروژه‌های ${name} | استخدام فریلنسر ${name} | فریلنسرکار`;
+  // «پروژه‌های {دسته} | استخدام فریلنسر {دسته} — فریلنسریاب»
+  const title = `پروژه‌های ${name} | استخدام فریلنسر ${name} | فریلنسریاب`;
   if (title.length <= 65) return title;
 
   // قالب ۳: خیلی کوتاه
-  return `پروژه‌های ${name} | فریلنسرکار`;
+  return `پروژه‌های ${name} | فریلنسریاب`;
 }
 
 // ===================================================
@@ -112,7 +103,7 @@ function buildDescription(
   name: string,
   dbDescription: string | null | undefined,
   postCount: number,
-  subs: string[]
+  subs: string[],
 ): string {
   // اولویت ۱: توضیحات دسته از DB (اگر موجود و کافی)
   if (dbDescription && dbDescription.trim().length >= 80) {
@@ -124,23 +115,23 @@ function buildDescription(
   // اولویت ۲: توضیحات با تعداد + زیردسته + CTA
   if (postCount >= 3 && subs.length > 0) {
     const subsList = subs.slice(0, 3).join("، ");
-    const desc = `${postCount} پروژه فعال ${name} در فریلنسرکار — شامل ${subsList}. همین حالا پروژه مناسب خودت رو پیدا کن و درآمدت رو شروع کن.`;
+    const desc = `${postCount} پروژه فعال ${name} در فریلنسریاب — شامل ${subsList}. همین حالا پروژه مناسب خودت رو پیدا کن و درآمدت رو شروع کن.`;
     return desc.length <= 158 ? desc : desc.slice(0, 155) + "...";
   }
 
   // اولویت ۳: توضیحات با تعداد + CTA
   if (postCount >= 3) {
-    return `${postCount} پروژه فعال ${name} در فریلنسرکار — همین حالا پروژه مناسب خودت رو پیدا کن و کار حرفه‌ای‌ات رو شروع کن. ثبت‌نام رایگان.`;
+    return `${postCount} پروژه فعال ${name} در فریلنسریاب — همین حالا پروژه مناسب خودت رو پیدا کن و کار حرفه‌ای‌ات رو شروع کن. ثبت‌نام رایگان.`;
   }
 
   // اولویت ۴: توضیحات با زیردسته
   if (subs.length > 0) {
     const subsList = subs.slice(0, 3).join("، ");
-    return `پروژه‌های ${name} در فریلنسرکار — شامل ${subsList}. لیست کامل آگهی‌های فعال را ببین و با کارفرمایان مستقیم ارتباط بگیر.`;
+    return `پروژه‌های ${name} در فریلنسریاب — شامل ${subsList}. لیست کامل آگهی‌های فعال را ببین و با کارفرمایان مستقیم ارتباط بگیر.`;
   }
 
   // fallback
-  return `پروژه‌های ${name} در فریلنسرکار — مشاهده لیست آگهی‌های فعال و ارتباط مستقیم با کارفرمایان. ثبت‌نام رایگان و ارسال پیشنهاد در چند دقیقه.`;
+  return `پروژه‌های ${name} در فریلنسریاب — مشاهده لیست آگهی‌های فعال و ارتباط مستقیم با کارفرمایان. ثبت‌نام رایگان و ارسال پیشنهاد در چند دقیقه.`;
 }
 
 // ===================================================
@@ -156,7 +147,7 @@ export async function generateMetadata({
 
   if (!category) {
     return {
-      title: "دسته‌بندی یافت نشد | فریلنسرکار",
+      title: "دسته‌بندی یافت نشد | فریلنسریاب",
       robots: { index: false, follow: false },
     };
   }
@@ -170,7 +161,7 @@ export async function generateMetadata({
     name,
     category.description,
     postCount,
-    subs
+    subs,
   );
 
   // 🎯 کلمات کلیدی ثانویه (بدون stuffing)
@@ -181,7 +172,7 @@ export async function generateMetadata({
     `آگهی ${name}`,
     `کار ${name}`,
     ...subs.slice(0, 3).map((s) => `${s}`),
-    "فریلنسرکار",
+    "فریلنسریاب",
     "پروژه آنلاین",
     "کار آنلاین",
   ];
@@ -207,7 +198,7 @@ export async function generateMetadata({
           url: `${BASE_URL}/og-image.png`,
           width: 1200,
           height: 630,
-          alt: `پروژه‌های ${name} در فریلنسرکار`,
+          alt: `پروژه‌های ${name} در فریلنسریاب`,
         },
       ],
     },
@@ -291,7 +282,7 @@ export default async function CategoryLayout({
         name: `پروژه‌های ${category.name}`,
         description:
           category.description ||
-          `لیست پروژه‌ها و آگهی‌های فعال در حوزه ${category.name} در فریلنسرکار`,
+          `لیست پروژه‌ها و آگهی‌های فعال در حوزه ${category.name} در فریلنسریاب`,
         inLanguage: "fa-IR",
         isPartOf: {
           "@type": "WebSite",

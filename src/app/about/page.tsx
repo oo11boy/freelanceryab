@@ -1,72 +1,72 @@
-'use client';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+"use client";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import Image from "next/image";
 
 const VALUES = [
   {
-    icon: '🛡️',
-    title: 'امنیت',
-    description: 'اولویت اول ما امنیت اطلاعات و تراکنش‌های کاربرانه',
-    color: 'from-blue-500 to-indigo-600',
-    bg: 'bg-blue-50',
+    icon: "🛡️",
+    title: "امنیت",
+    description: "اولویت اول ما امنیت اطلاعات و تراکنش‌های کاربرانه",
+    color: "from-blue-500 to-indigo-600",
+    bg: "bg-blue-50",
   },
   {
-    icon: '🤝',
-    title: 'اعتماد',
-    description: 'شفافیت کامل در همه تعاملات و پشتیبانی همیشگی',
-    color: 'from-emerald-500 to-teal-600',
-    bg: 'bg-emerald-50',
+    icon: "🤝",
+    title: "اعتماد",
+    description: "شفافیت کامل در همه تعاملات و پشتیبانی همیشگی",
+    color: "from-emerald-500 to-teal-600",
+    bg: "bg-emerald-50",
   },
   {
-    icon: '⚡',
-    title: 'سرعت',
-    description: 'اتصال سریع کارفرما و فریلنسر بدون واسطه‌های اضافی',
-    color: 'from-amber-500 to-orange-600',
-    bg: 'bg-amber-50',
+    icon: "⚡",
+    title: "سرعت",
+    description: "اتصال سریع کارفرما و فریلنسر بدون واسطه‌های اضافی",
+    color: "from-amber-500 to-orange-600",
+    bg: "bg-amber-50",
   },
   {
-    icon: '🌟',
-    title: 'کیفیت',
-    description: 'ترویج فرهنگ کار حرفه‌ای و استانداردهای بالا',
-    color: 'from-purple-500 to-fuchsia-600',
-    bg: 'bg-purple-50',
+    icon: "🌟",
+    title: "کیفیت",
+    description: "ترویج فرهنگ کار حرفه‌ای و استانداردهای بالا",
+    color: "from-purple-500 to-fuchsia-600",
+    bg: "bg-purple-50",
   },
 ];
 
 const STATS = [
-  { value: '۱٬۲۰۰+', label: 'فریلنسر فعال', icon: '👥' },
-  { value: '۳٬۵۰۰+', label: 'پروژه موفق', icon: '✅' },
-  { value: '۹۸٪', label: 'رضایت کاربران', icon: '⭐' },
+  { value: "۱٬۲۰۰+", label: "فریلنسر فعال", icon: "👥" },
+  { value: "۳٬۵۰۰+", label: "پروژه موفق", icon: "✅" },
+  { value: "۹۸٪", label: "رضایت کاربران", icon: "⭐" },
 ];
 
 const HOW_IT_WORKS = [
   {
     step: 1,
-    icon: '📝',
-    title: 'ثبت آگهی یا جستجو',
+    icon: "📝",
+    title: "ثبت آگهی یا جستجو",
     description:
-      'کارفرما پروژه رو ثبت می‌کنه، فریلنسر پروژه‌های مرتبط رو پیدا می‌کنه',
+      "کارفرما پروژه رو ثبت می‌کنه، فریلنسر پروژه‌های مرتبط رو پیدا می‌کنه",
   },
   {
     step: 2,
-    icon: '💬',
-    title: 'ارتباط و توافق',
-    description:
-      'طرفین از طریق چت پلتفرم با هم صحبت می‌کنن و به توافق می‌رسن',
+    icon: "💬",
+    title: "ارتباط و توافق",
+    description: "طرفین از طریق چت پلتفرم با هم صحبت می‌کنن و به توافق می‌رسن",
   },
   {
     step: 3,
-    icon: '🎯',
-    title: 'انجام پروژه',
-    description: 'فریلنسر کار رو انجام می‌ده و کارفرما نتیجه رو دریافت می‌کنه',
+    icon: "🎯",
+    title: "انجام پروژه",
+    description: "فریلنسر کار رو انجام می‌ده و کارفرما نتیجه رو دریافت می‌کنه",
   },
 ];
 
 const TEAM_FEATURES = [
-  { icon: '🔒', title: 'احراز هویت امن', desc: 'ورود با OTP و شماره موبایل' },
-  { icon: '💬', title: 'چت اختصاصی', desc: 'ارتباط مستقیم بدون افشای شماره' },
-  { icon: '❤️', title: 'ذخیره آگهی', desc: 'نشان‌کردن پروژه‌های موردعلاقه' },
-  { icon: '🔔', title: 'اعلان لحظه‌ای', desc: 'اطلاع از پیام‌ها و پیشنهادها' },
+  { icon: "🔒", title: "احراز هویت امن", desc: "ورود با OTP و شماره موبایل" },
+  { icon: "💬", title: "چت اختصاصی", desc: "ارتباط مستقیم بدون افشای شماره" },
+  { icon: "❤️", title: "ذخیره آگهی", desc: "نشان‌کردن پروژه‌های موردعلاقه" },
+  { icon: "🔔", title: "اعلان لحظه‌ای", desc: "اطلاع از پیام‌ها و پیشنهادها" },
 ];
 
 export default function AboutPage() {
@@ -111,7 +111,7 @@ export default function AboutPage() {
               📖 درباره ما
             </h1>
             <p className="text-sm text-gray-500 mt-1">
-              داستان، ارزش‌ها و آنچه فریلنسرکار را متفاوت می‌کند
+              داستان، ارزش‌ها و آنچه فریلنسریاب را متفاوت می‌کند
             </p>
           </div>
           <button
@@ -139,7 +139,6 @@ export default function AboutPage() {
       {/* ===== محتوا ===== */}
       <div className="max-w-6xl mx-auto lg:px-6">
         <div className="lg:grid lg:grid-cols-[400px_1fr] lg:gap-8">
-
           {/* ===== Sidebar (هیرو + آمار + CTA) ===== */}
           <aside className="lg:block">
             {/* موبایل: هیرو بالای صفحه */}
@@ -150,9 +149,10 @@ export default function AboutPage() {
 
                 <div className="relative">
                   <div className="w-20 h-20 mx-auto rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-4xl mb-4 shadow-lg">
-                    🚀
+                        <Image src="/icons/iconapp.png" className=" rounded-lg" alt="لوگو" width={100} height={50} />
+      
                   </div>
-                  <h2 className="text-xl font-bold mb-1">فریلنسرکار</h2>
+                  <h2 className="text-xl font-bold mb-1">فریلنسریاب</h2>
                   <p className="text-xs opacity-90">
                     پل ارتباطی متخصصان و کارفرمایان آنلاین
                   </p>
@@ -170,9 +170,10 @@ export default function AboutPage() {
 
                   <div className="relative">
                     <div className="w-20 h-20 mx-auto rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-4xl mb-4 shadow-lg">
-                      🚀
+                                   <Image src="/icons/iconapp.png" className=" rounded-lg" alt="لوگو" width={100} height={50} />
+      
                     </div>
-                    <h2 className="text-xl font-bold mb-1">فریلنسرکار</h2>
+                    <h2 className="text-xl font-bold mb-1">فریلنسریاب</h2>
                     <p className="text-xs opacity-90 mb-4">
                       پل ارتباطی متخصصان و کارفرمایان آنلاین
                     </p>
@@ -257,7 +258,6 @@ export default function AboutPage() {
 
           {/* ===== ستون محتوا ===== */}
           <main className="p-4 lg:p-0 space-y-4 lg:space-y-5">
-
             {/* داستان ما */}
             <div className="bg-white rounded-2xl p-5 lg:p-6 shadow-sm border border-gray-100">
               <h2 className="font-bold text-gray-800 text-sm lg:text-lg mb-3 lg:mb-4 flex items-center gap-2">
@@ -265,7 +265,7 @@ export default function AboutPage() {
               </h2>
               <div className="space-y-3 lg:space-y-4 text-sm lg:text-base text-gray-700 leading-relaxed">
                 <p>
-                  فریلنسرکار در سال ۱۴۰۳ با یک هدف ساده اما بزرگ متولد شد:{' '}
+                  فریلنسریاب در سال ۱۴۰۳ با یک هدف ساده اما بزرگ متولد شد:{" "}
                   <span className="font-semibold text-blue-700">
                     هر کسی بتواند با تخصص خود کسب درآمد کند.
                   </span>
@@ -277,7 +277,7 @@ export default function AboutPage() {
                   فریلنسر رو پیدا کنن.
                 </p>
                 <p className="bg-blue-50 border-r-4 border-blue-500 p-3 lg:p-4 rounded-l-lg text-blue-900 text-xs lg:text-sm">
-                  فریلنسرکار این فاصله رو پر می‌کنه — با بستری امن، سریع و شفاف
+                  فریلنسریاب این فاصله رو پر می‌کنه — با بستری امن، سریع و شفاف
                   که هر دو طرف رو به هم می‌رسونه.
                 </p>
               </div>
@@ -313,7 +313,7 @@ export default function AboutPage() {
             {/* چطور کار می‌کنه */}
             <div className="bg-white rounded-2xl p-5 lg:p-6 shadow-sm border border-gray-100">
               <h2 className="font-bold text-gray-800 text-sm lg:text-lg mb-3 lg:mb-4 flex items-center gap-2">
-                <span>⚙️</span> فریلنسرکار چطور کار می‌کنه؟
+                <span>⚙️</span> فریلنسریاب چطور کار می‌کنه؟
               </h2>
 
               {/* موبایل: عمودی */}
@@ -458,7 +458,7 @@ export default function AboutPage() {
               {/* پیام پایانی */}
               <div className="text-center py-2">
                 <p className="text-[10px] text-gray-400 leading-relaxed flex items-center justify-center gap-1">
-                  ساخته شده با{' '}
+                  ساخته شده با{" "}
                   <span className="text-red-400 animate-pulse">❤️</span> برای
                   فریلنسرهای ایران
                 </p>

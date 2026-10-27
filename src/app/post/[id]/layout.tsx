@@ -4,7 +4,7 @@ import { query } from "@/lib/db";
 
 const BASE_URL =
   process.env.NEXT_PUBLIC_SITE_URL || "https://freelancerkar.com";
-const SITE_NAME = "فریلنسرکار";
+const SITE_NAME = "فریلنسریاب";
 
 // ===================================================
 // 📊 گرفتن آگهی + مالک از DB
@@ -18,7 +18,7 @@ async function getPost(id: number) {
        FROM posts p
        LEFT JOIN users u ON p.user_id = u.id
        WHERE p.id = ?`,
-      [id]
+      [id],
     );
     return rows[0] || null;
   } catch (err) {
@@ -61,15 +61,15 @@ function buildTitle(post: any): string {
   const price = formatPrice(post.price, post.price_type);
 
   // اگر عنوان + قیمت در ۶۵ کاراکتر جا شد
-  const withPrice = `${title} — ${price} | فریلنسرکار`;
+  const withPrice = `${title} — ${price} | فریلنسریاب`;
   if (withPrice.length <= 65) return withPrice;
 
   // اگر عنوان + دسته
-  const withCategory = `${title} | پروژه ${post.category || ""} | فریلنسرکار`;
+  const withCategory = `${title} | پروژه ${post.category || ""} | فریلنسریاب`;
   if (withCategory.length <= 65) return withCategory;
 
   // فقط عنوان
-  return `${title} | فریلنسرکار`;
+  return `${title} | فریلنسریاب`;
 }
 
 // ===================================================
@@ -96,7 +96,7 @@ function buildDescription(post: any): string {
     parts.push(`مهارت‌ها: ${skills.slice(0, 3).join("، ")}`);
   }
 
-  parts.push("همین حالا در فریلنسرکار ببینید و پیشنهاد ارسال کنید.");
+  parts.push("همین حالا در فریلنسریاب ببینید و پیشنهاد ارسال کنید.");
 
   return truncate(parts.join(" — "), 158);
 }
@@ -146,7 +146,7 @@ export async function generateMetadata({
   // id نامعتبر
   if (isNaN(postId)) {
     return {
-      title: "آگهی یافت نشد | فریلنسرکار",
+      title: "آگهی یافت نشد | فریلنسریاب",
       robots: { index: false, follow: false },
     };
   }
@@ -157,12 +157,12 @@ export async function generateMetadata({
   if (
     !post ||
     !["active", "locked", "in_progress", "delivered", "completed"].includes(
-      post.status
+      post.status,
     )
   ) {
     return {
-      title: "آگهی یافت نشد | فریلنسرکار",
-      description: "این آگهی در فریلنسرکار وجود ندارد یا حذف شده است.",
+      title: "آگهی یافت نشد | فریلنسریاب",
+      description: "این آگهی در فریلنسریاب وجود ندارد یا حذف شده است.",
       robots: { index: false, follow: false },
     };
   }
@@ -174,9 +174,7 @@ export async function generateMetadata({
   const url = `${BASE_URL}/post/${post.id}`;
 
   // 🖼️ تصویر OG (اگر آگهی تصویر دارد)
-  const ogImage = images.length > 0
-    ? images[0]
-    : `${BASE_URL}/og-image.png`;
+  const ogImage = images.length > 0 ? images[0] : `${BASE_URL}/og-image.png`;
 
   // 🎯 کلمات کلیدی
   const keywords = [
@@ -185,7 +183,7 @@ export async function generateMetadata({
     post.sub_category,
     ...skills.slice(0, 5),
     post.location,
-    "فریلنسرکار",
+    "فریلنسریاب",
     "پروژه آنلاین",
   ].filter(Boolean) as string[];
 
@@ -264,7 +262,7 @@ export default async function PostLayout({
   if (
     !post ||
     !["active", "locked", "in_progress", "delivered", "completed"].includes(
-      post.status
+      post.status,
     )
   ) {
     return <>{children}</>;
@@ -299,7 +297,7 @@ export default async function PostLayout({
               position: 3,
               name: post.category,
               item: `${BASE_URL}/explore?category=${encodeURIComponent(
-                post.category
+                post.category,
               )}`,
             },
           ]
@@ -325,7 +323,7 @@ export default async function PostLayout({
     category: post.category || undefined,
     ...(images.length > 0 && {
       image: images.map((img) =>
-        img.startsWith("http") ? img : `${BASE_URL}${img}`
+        img.startsWith("http") ? img : `${BASE_URL}${img}`,
       ),
     }),
     ...(skills.length > 0 && {
@@ -337,13 +335,14 @@ export default async function PostLayout({
       priceCurrency: "IRR",
       price: price > 0 ? price : 0,
       priceValidUntil: post.deadline || undefined,
-      availability: post.status === "active"
-        ? "https://schema.org/InStock"
-        : "https://schema.org/OutOfStock",
+      availability:
+        post.status === "active"
+          ? "https://schema.org/InStock"
+          : "https://schema.org/OutOfStock",
       itemCondition: "https://schema.org/NewCondition",
       seller: {
         "@type": "Person",
-        name: post.user_name || "کاربر فریلنسرکار",
+        name: post.user_name || "کاربر فریلنسریاب",
         url: `${BASE_URL}/user/${post.user_id}`,
       },
     },
@@ -368,7 +367,7 @@ export default async function PostLayout({
           : "https://schema.org/OutOfStock",
       seller: {
         "@type": "Person",
-        name: post.user_name || "کاربر فریلنسرکار",
+        name: post.user_name || "کاربر فریلنسریاب",
         url: `${BASE_URL}/user/${post.user_id}`,
       },
     };
