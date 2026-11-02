@@ -56,11 +56,14 @@ export function usePushSubscription() {
 
       let subscription = existingSub;
       if (!subscription) {
+        // 🔑 تبدیل Uint8Array به BufferSource
+        const applicationServerKey = urlBase64ToUint8Array(
+          process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!
+        ).buffer as ArrayBuffer;
+
         subscription = await registration.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(
-            process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!
-          ),
+          applicationServerKey,
         });
       }
 
