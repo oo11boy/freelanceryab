@@ -19,6 +19,7 @@ const menuItems: MenuItem[] = [
   { href: "/admin/categories", label: "دسته‌بندی‌ها", icon: "🗂️" },
   { href: "/admin/contracts", label: "قراردادها", icon: "💼" },
   { href: "/admin/reports", label: "گزارش‌ها", icon: "🚨" },
+    { href: '/admin/push', label: 'پوش نوتیفیکیشن', icon: '📤' },
   { href: "/admin/notifications", label: "اعلانات", icon: "🔔" },
   { href: "/admin/settings", label: "تنظیمات", icon: "⚙️" },
 ];
