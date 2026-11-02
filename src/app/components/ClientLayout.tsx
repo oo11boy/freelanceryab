@@ -6,11 +6,12 @@ import Header from './Header';
 import Footer from './Footer';
 import { useUILayout } from '@/app/hooks/useUILayout';
 import { usePushSubscription } from '@/app/hooks/usePushSubscription';
+import NotificationPrompt from './NotificationPrompt';
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { hideHeader } = useUILayout();
-  const { subscribe, permission } = usePushSubscription();
+  const { subscribe } = usePushSubscription();
   const initRef = useRef(false);
 
   // 🔔 ثبت Web Push (یه بار، بعد از mount)
@@ -24,27 +25,15 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
       return;
     }
 
-    // اگه قبلاً مجوز داده شده → دوباره ثبت کن
+    // 🔑 اگه قبلاً مجوز داده → subscribe خودکار
     if (Notification.permission === 'granted') {
       initRef.current = true;
       const timer = setTimeout(() => subscribe(), 3000);
       return () => clearTimeout(timer);
     }
 
-    // اگه هنوز تصمیم نگرفته → بعد از ۱۰ ثانیه درخواست بده
-    // (بعد از اینکه کاربر یه صفحه رو دید، نه همون اول)
-    if (Notification.permission === 'default') {
-      initRef.current = true;
-      const timer = setTimeout(() => {
-        // فقط اگه کاربر هنوز تصمیم نگرفته
-        if (Notification.permission === 'default') {
-          subscribe();
-        }
-      }, 10000);
-      return () => clearTimeout(timer);
-    }
-
-    // اگه رد کرده (denied) → کاری نکن
+    // 🔑 اگه default → مودال نشون داده می‌شه، اینجا کاری نکن
+    // (مودال خودش subscribe رو صدا می‌زنه)
     initRef.current = true;
   }, [subscribe]);
 
@@ -74,6 +63,9 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
 
         <Footer />
       </div>
+
+      {/* 🆕 مودال درخواست اعلان */}
+      <NotificationPrompt />
     </>
   );
 }
