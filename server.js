@@ -4,6 +4,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const mysql = require('mysql2/promise');
 const jwt = require('jsonwebtoken');
+const webpush = require('web-push');
 require('dotenv').config();
 
 const PORT = parseInt(process.env.SOCKET_PORT || '3001', 10);
@@ -25,12 +26,87 @@ const pool = mysql.createPool({
 });
 
 // ===================================================
-// Express app (فقط برای /api/notify و /health)
+// 🔔 Web Push setup
+// ===================================================
+try {
+  webpush.setVapidDetails(
+    process.env.VAPID_SUBJECT || 'mailto:admin@freelanceryaab.ir',
+    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+    process.env.VAPID_PRIVATE_KEY
+  );
+  console.log('🔔 Web Push ready');
+} catch (err) {
+  console.error('❌ Web Push setup failed:', err.message);
+  console.error('   Check VAPID keys in .env');
+}
+
+// 🔑 تابع ارسال Web Push به یک کاربر (همه دستگاه‌هاش)
+async function sendWebPush(userId, payload) {
+  try {
+    const [subs] = await pool.execute(
+      'SELECT id, endpoint, p256dh, auth FROM push_subscriptions WHERE user_id = ?',
+      [userId]
+    );
+
+    if (subs.length === 0) {
+      console.log(`   📭 No push subscriptions for user ${userId}`);
+      return { sent: 0, failed: 0 };
+    }
+
+    const notificationPayload = JSON.stringify(payload);
+    let sent = 0;
+    let failed = 0;
+
+    for (const sub of subs) {
+      try {
+        await webpush.sendNotification(
+          {
+            endpoint: sub.endpoint,
+            keys: { p256dh: sub.p256dh, auth: sub.auth },
+          },
+          notificationPayload
+        );
+        sent++;
+      } catch (err) {
+        failed++;
+        console.error(`   ❌ Push failed (sub ${sub.id}):`, err.statusCode || err.message);
+
+        // اگه subscription منقضی شده، از DB حذف کن
+        if (err.statusCode === 410 || err.statusCode === 404) {
+          try {
+            await pool.execute('DELETE FROM push_subscriptions WHERE id = ?', [sub.id]);
+            console.log(`   🗑️ Removed invalid subscription ${sub.id}`);
+          } catch (delErr) {
+            console.error('   Delete sub error:', delErr.message);
+          }
+        }
+      }
+    }
+
+    console.log(`   📤 Push: ${sent}/${subs.length} devices for user ${userId}`);
+    return { sent, failed };
+  } catch (err) {
+    console.error('sendWebPush error:', err.message);
+    return { sent: 0, failed: 0 };
+  }
+}
+
+// 🔑 تابع ارسال Web Push به چند کاربر
+async function sendWebPushToUsers(userIds, payload) {
+  const results = [];
+  for (const uid of userIds) {
+    const res = await sendWebPush(uid, payload);
+    results.push({ userId: uid, ...res });
+  }
+  return results;
+}
+
+// ===================================================
+// Express app
 // ===================================================
 const app = express();
 app.use(express.json());
 
-// CORS ساده برای Express
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -42,7 +118,7 @@ app.use((req, res, next) => {
 // ===================================================
 // Endpoint برای Next.js API که رویداد می‌فرسته
 // ===================================================
-app.post('/api/notify', (req, res) => {
+app.post('/api/notify', async (req, res) => {
   const { event, data, secret } = req.body || {};
 
   if (secret !== SOCKET_SECRET) {
@@ -56,6 +132,18 @@ app.post('/api/notify', (req, res) => {
     data.targetUsers.forEach((userId) => {
       io.to(`user_${userId}`).emit(event, data);
     });
+
+    // 🔔 اگه event پیام یا اعلان بود، Web Push هم بفرست
+    if (event === 'new_message' || event === 'new_notification') {
+      const pushPayload = {
+        title: data.title || (event === 'new_message' ? '💬 پیام جدید' : '🔔 اعلان جدید'),
+        message: data.message || data.text || 'اعلان جدید',
+        link: data.link || '/',
+        tag: data.tag || `${event}-${Date.now()}`,
+      };
+
+      await sendWebPushToUsers(data.targetUsers, pushPayload);
+    }
   } else {
     io.emit(event, data);
   }
@@ -73,6 +161,7 @@ app.get('/health', (req, res) => {
     connections: io?.engine?.clientsCount || 0,
     uptime: Math.floor(process.uptime()),
     onlineUsers: onlineUsers.size,
+    webPush: !!process.env.VAPID_PRIVATE_KEY,
   });
 });
 
@@ -107,7 +196,7 @@ const io = new Server(server, {
 });
 
 // ===================================================
-// Map کاربران آنلاین (userId → Set of socketId)
+// Map کاربران آنلاین
 // ===================================================
 const onlineUsers = new Map();
 
@@ -151,16 +240,12 @@ io.on('connection', async (socket) => {
 
   console.log(`🟢 User ${userId} connected (socket: ${socket.id})`);
 
-  // عضویت در اتاق کاربر
   socket.join(`user_${userId}`);
 
-  // افزودن به Map آنلاین‌ها
   if (!onlineUsers.has(userId)) {
     onlineUsers.set(userId, new Set());
-    // به بقیه اطلاع بده
     socket.broadcast.emit('user_online', { user_id: userId });
 
-    // آپدیت DB (فقط بار اول)
     try {
       await pool.execute(
         `UPDATE users SET online_status = 1, last_seen_at = NOW() WHERE id = ?`,
@@ -172,7 +257,6 @@ io.on('connection', async (socket) => {
   }
   onlineUsers.get(userId).add(socket.id);
 
-  // ارسال لیست کاربران آنلاین به کاربر جدید
   socket.emit('online_users', {
     user_ids: Array.from(onlineUsers.keys()),
   });
@@ -194,6 +278,16 @@ io.on('connection', async (socket) => {
         [userId, receiver_id, post_id || null, message.trim()]
       );
 
+      // 🔑 اسم فرستنده
+      let senderName = 'کاربر';
+      try {
+        const [senderRows] = await pool.execute(
+          'SELECT full_name FROM users WHERE id = ?',
+          [userId]
+        );
+        senderName = senderRows[0]?.full_name || 'کاربر';
+      } catch {}
+
       const newMessage = {
         id: result.insertId,
         text: message.trim(),
@@ -205,29 +299,43 @@ io.on('connection', async (socket) => {
         created_at: new Date().toISOString(),
       };
 
-      // ارسال به گیرنده
+      // ارسال به گیرنده (اگه آنلاین باشه)
       io.to(`user_${receiver_id}`).emit('new_message', newMessage);
 
       // ارسال به خود فرستنده
       socket.emit('message_sent', newMessage);
 
-      // اگه گیرنده آنلاین نیست، اعلان ذخیره کن
+      // 🔔 اگه گیرنده آنلاین نیست → اعلان + Web Push
       const receiverOnline =
         onlineUsers.has(receiver_id) && onlineUsers.get(receiver_id).size > 0;
 
-      if (!receiverOnline) {
-        try {
-          let link = `/messages?user=${userId}`;
-          if (post_id) link += `&post=${post_id}`;
+      console.log(
+        `   💬 Message from ${userId} → ${receiver_id} | online: ${receiverOnline}`
+      );
 
+      if (!receiverOnline) {
+        let link = `/messages?user=${userId}`;
+        if (post_id) link += `&post=${post_id}`;
+
+        // ۱. ذخیره اعلان در DB
+        try {
           await pool.execute(
             `INSERT INTO notifications (user_id, type, title, message, link)
-             VALUES (?, 'message', 'پیام جدید', 'شما یک پیام جدید دارید', ?)`,
-            [receiver_id, link]
+             VALUES (?, 'message', 'پیام جدید', ?, ?)`,
+            [receiver_id, `پیام جدید از ${senderName}`, link]
           );
         } catch (notifErr) {
           console.error('Notification error:', notifErr.message);
         }
+
+        // ۲. Web Push
+        await sendWebPush(receiver_id, {
+          title: '💬 پیام جدید',
+          message: `${senderName}: ${message.trim().substring(0, 80)}${message.trim().length > 80 ? '...' : ''}`,
+          link,
+          tag: `message-${userId}-${post_id || 'general'}`,
+          icon: '/icons/icon-192.png',
+        });
       }
     } catch (err) {
       console.error('send_message error:', err.message);
@@ -291,16 +399,13 @@ io.on('connection', async (socket) => {
   });
 
   // ===================================================
-  // 🔔 رویداد قرارداد (قفل، تحویل، تایید، لغو)
+  // 🔔 رویداد قرارداد
   // ===================================================
   socket.on('contract_event', (data) => {
-    console.log(
-      `📢 contract_event from user ${userId}: ${data?.event}`
-    );
+    console.log(`📢 contract_event from user ${userId}: ${data?.event}`);
 
     if (data?.targetUsers && Array.isArray(data.targetUsers)) {
       data.targetUsers.forEach((targetId) => {
-        // به کاربر هدف (که ممکنه خودمون هم باشیم)
         io.to(`user_${targetId}`).emit('contract_event', data);
       });
     }
@@ -316,14 +421,10 @@ io.on('connection', async (socket) => {
     if (sockets) {
       sockets.delete(socket.id);
 
-      // اگه هیچ socket دیگه‌ای از این کاربر باز نیست → آفلاین
       if (sockets.size === 0) {
         onlineUsers.delete(userId);
-
-        // به بقیه اطلاع بده
         io.emit('user_offline', { user_id: userId });
 
-        // آپدیت DB
         try {
           await pool.execute(
             `UPDATE users SET online_status = 0, last_seen_at = NOW() WHERE id = ?`,
@@ -346,6 +447,9 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(
     `   DB: ${process.env.DB_USER}@${process.env.DB_HOST}/${process.env.DB_NAME}`
   );
+  console.log(
+    `   Web Push: ${process.env.VAPID_PRIVATE_KEY ? '✅ enabled' : '❌ disabled (VAPID_PRIVATE_KEY missing)'}`
+  );
 });
 
 // ===================================================
@@ -366,7 +470,6 @@ const shutdown = async (signal) => {
     });
   });
 
-  // Force exit after 10 seconds
   setTimeout(() => {
     console.error('⚠️  Forced shutdown after timeout');
     process.exit(1);
@@ -382,10 +485,8 @@ process.on('SIGINT', () => shutdown('SIGINT'));
 process.on('uncaughtException', (err) => {
   console.error('💥 Uncaught exception:', err.message);
   console.error(err.stack);
-  // Don't exit — keep the server running
 });
 
 process.on('unhandledRejection', (reason) => {
   console.error('💥 Unhandled rejection:', reason);
-  // Don't exit
 });

@@ -56,7 +56,7 @@ function MessagesContent() {
   const searchParams = useSearchParams();
   const { user, token, loading: authLoading } = useAuth();
   const { setHideBottomNav } = useUILayout();
-
+const [supportId, setSupportId] = useState<number | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedChat, setSelectedChat] = useState<number | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -401,15 +401,17 @@ function MessagesContent() {
     }
   }, [selectedChat]);
 
-  const loadConversations = async () => {
-    try {
-      const data = await messagesAPI.getConversations();
-      setConversations(data.conversations || []);
-      return data.conversations || [];
-    } catch (error) {
-      return [];
-    }
-  };
+const loadConversations = async () => {
+  try {
+    const data = await messagesAPI.getConversations();
+    setConversations(data.conversations || []);
+    // 🔑
+    if (data.supportId) setSupportId(data.supportId);
+    return data.conversations || [];
+  } catch (error) {
+    return [];
+  }
+};
 
   const loadMessages = async (userId: number, postId: number | null) => {
     setLoading(true);
@@ -818,7 +820,7 @@ function MessagesContent() {
           </div>
         )}
 
-        {postIdForChat && selectedChat && (
+    {postIdForChat && selectedChat && selectedChat !== supportId && (
           <ContractBar
             contract={contractData.contract}
             role={contractData.role}

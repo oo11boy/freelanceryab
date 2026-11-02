@@ -3,15 +3,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { getUserIdFromToken, unauthorized } from "@/lib/auth";
 
-// -------------------------------------------------
-// GET - لیست مکالمات (گروه‌بندی بر اساس post_id + other_user)
-// -------------------------------------------------
 export async function GET(request: NextRequest) {
   try {
     const userId = getUserIdFromToken(request);
     if (!userId) return unauthorized();
 
-    const conversations = await query(
+    // 🔑 id کاربر پشتیبانی
+    const supportRows = (await query(
+      `SELECT id FROM users WHERE phone = '00000000000' LIMIT 1`
+    )) as any[];
+    const supportId = supportRows[0]?.id || null;
+
+    const conversations = (await query(
       `SELECT
          conv.post_id,
          p.title AS post_title,
@@ -53,9 +56,10 @@ export async function GET(request: NextRequest) {
          ON p.id = conv.post_id
        ORDER BY last_msg.created_at DESC`,
       [userId, userId, userId, userId]
-    );
+    )) as any[];
 
-    return NextResponse.json({ conversations });
+    // 🔑 supportId رو هم برگردون
+    return NextResponse.json({ conversations, supportId });
   } catch (error) {
     console.error("Get conversations error:", error);
     return NextResponse.json(
@@ -65,9 +69,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// -------------------------------------------------
-// POST - ارسال پیام
-// -------------------------------------------------
+// POST بدون تغییر
 export async function POST(request: NextRequest) {
   try {
     const senderId = getUserIdFromToken(request);
@@ -98,11 +100,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const receiverExists = await query(
+    const receiverExists = (await query(
       "SELECT id FROM users WHERE id = ? AND is_active = 1",
       [receiverId]
-    );
-    if (!(receiverExists as any[]).length) {
+    )) as any[];
+    if (!receiverExists.length) {
       return NextResponse.json(
         { error: "کاربر گیرنده یافت نشد" },
         { status: 404 }
@@ -117,7 +119,6 @@ export async function POST(request: NextRequest) {
 
     const messageId = (result as any).insertId;
 
-    // اعلان — لینک به مکالمه با post_id
     let link = `/messages?user=${senderId}`;
     if (post_id) link += `&post=${post_id}`;
 
