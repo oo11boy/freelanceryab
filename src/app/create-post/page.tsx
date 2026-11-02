@@ -133,30 +133,38 @@ export default function CreatePostPage() {
     return d.toISOString().split("T")[0];
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validateStep(2)) { setStep(2); return; }
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  if (!validateStep(2)) { setStep(2); return; }
 
-    setSaving(true);
-    try {
-      const result = await postsAPI.createPost({
-        user_id: user?.id,
-        ...formData,
-        deadline: computeDeadline(),
-      });
+  setSaving(true);
+  try {
+    const result = await postsAPI.createPost({
+      user_id: user?.id,
+      ...formData,
+      deadline: computeDeadline(),
+    });
 
-      if (result?.needs_approval) {
-        alert('✅ آگهی شما ثبت شد و پس از تأیید ادمین نمایش داده می‌شه.');
-      } else {
-        alert('✅ آگهی شما با موفقیت منتشر شد!');
-      }
-      router.push("/profile?created=1");
-    } catch (error: any) {
-      alert(error.message || "خطا در ثبت آگهی");
-    } finally {
-      setSaving(false);
+    // 🔑 چک needs_approval
+    if (result?.needs_approval) {
+      alert('✅ آگهی شما ثبت شد و پس از تأیید ادمین نمایش داده می‌شه.');
+    } else {
+      alert('✅ آگهی شما با موفقیت منتشر شد!');
     }
-  };
+    router.push("/profile?created=1");
+  } catch (error: any) {
+    const msg = error.message || "خطا در ثبت آگهی";
+
+    // 🔑 خطای محدودیت روزانه
+    if (msg.includes('امروز') || msg.includes('روز فقط') || msg.includes('حداکثر')) {
+      alert(`⚠️ ${msg}\n\nمی‌تونید فردا دوباره امتحان کنید.`);
+    } else {
+      alert(msg);
+    }
+  } finally {
+    setSaving(false);
+  }
+};
 
   const selectedCat = getCategoryByDbName(categories, formData.category);
 

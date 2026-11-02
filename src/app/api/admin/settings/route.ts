@@ -15,9 +15,8 @@ function getUserIdFromToken(request: NextRequest): number | null {
 }
 
 async function checkAdmin(userId: number): Promise<boolean> {
-  const users = await query('SELECT role FROM users WHERE id = ?', [userId]);
-  const user = (users as any[])[0];
-  return user?.role === 'admin';
+  const users = (await query('SELECT role FROM users WHERE id = ?', [userId])) as any[];
+  return users[0]?.role === 'admin';
 }
 
 async function logAdminAction(adminId: number, action: string, targetType: string, targetId: number, details?: any) {
@@ -27,7 +26,9 @@ async function logAdminAction(adminId: number, action: string, targetType: strin
        VALUES (?, ?, ?, ?, ?)`,
       [adminId, action, targetType, targetId, details ? JSON.stringify(details) : null]
     );
-  } catch (err) { console.error('Admin log error:', err); }
+  } catch (err) {
+    console.error('Admin log error:', err);
+  }
 }
 
 // GET /api/admin/settings
@@ -37,9 +38,9 @@ export async function GET(request: NextRequest) {
     if (!adminId) return NextResponse.json({ error: 'احراز هویت نشده' }, { status: 401 });
     if (!(await checkAdmin(adminId))) return NextResponse.json({ error: 'دسترسی ندارید' }, { status: 403 });
 
-    const rows = await query(`SELECT \`key\`, \`value\` FROM settings`);
+    const rows = (await query(`SELECT \`key\`, \`value\` FROM settings`)) as any[];
     const settings: Record<string, string> = {};
-    for (const row of rows as any[]) {
+    for (const row of rows) {
       settings[row.key] = row.value || '';
     }
 
@@ -74,17 +75,30 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'حداکثر آگهی باید بین ۱ تا ۱۰۰۰ باشد' }, { status: 400 });
     }
 
+    const maxPostsPerDay = parseInt(settings.max_posts_per_day);
+    if (
+      settings.max_posts_per_day !== undefined &&
+      (isNaN(maxPostsPerDay) || maxPostsPerDay < 0 || maxPostsPerDay > 100)
+    ) {
+      return NextResponse.json(
+        { error: 'حداکثر آگهی در روز باید بین ۰ تا ۱۰۰ باشد' },
+        { status: 400 }
+      );
+    }
+
     const tokenDays = parseInt(settings.token_expiry_days);
     if (settings.token_expiry_days && (isNaN(tokenDays) || tokenDays < 1 || tokenDays > 365)) {
       return NextResponse.json({ error: 'مدت توکن باید بین ۱ تا ۳۶۵ روز باشد' }, { status: 400 });
     }
 
-    // ذخیره — 🔑 key و value با بک‌تیک
+    // ذخیره — key و value با بک‌تیک
     const allowedKeys = [
       'site_name', 'site_description',
       'contact_phone', 'contact_email',
       'about_text', 'rules_text',
-      'post_approval_mode', 'max_posts_per_user', 'banned_words',
+      'post_approval_mode', 'max_posts_per_user',
+      'max_posts_per_day',
+      'banned_words',
       'token_expiry_days',
     ];
 

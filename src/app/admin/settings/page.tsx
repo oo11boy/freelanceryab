@@ -1,7 +1,7 @@
-"use client";
-import { useState, useEffect } from "react";
-import Link from "next/link";
-import { useAuth } from "@/app/hooks/useAuth";
+'use client';
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { useAuth } from '@/app/hooks/useAuth';
 
 interface Settings {
   site_name: string;
@@ -10,23 +10,25 @@ interface Settings {
   contact_email: string;
   about_text: string;
   rules_text: string;
-  post_approval_mode: "auto" | "manual";
+  post_approval_mode: 'auto' | 'manual';
   max_posts_per_user: string;
+  max_posts_per_day: string;
   banned_words: string;
   token_expiry_days: string;
 }
 
 const DEFAULT_SETTINGS: Settings = {
-  site_name: "فریلنسریاب",
-  site_description: "",
-  contact_phone: "",
-  contact_email: "",
-  about_text: "",
-  rules_text: "",
-  post_approval_mode: "manual",
-  max_posts_per_user: "10",
-  banned_words: "",
-  token_expiry_days: "30",
+  site_name: 'فریلنسرکار',
+  site_description: '',
+  contact_phone: '',
+  contact_email: '',
+  about_text: '',
+  rules_text: '',
+  post_approval_mode: 'manual',
+  max_posts_per_user: '10',
+  max_posts_per_day: '1',
+  banned_words: '',
+  token_expiry_days: '30',
 };
 
 export default function AdminSettingsPage() {
@@ -35,7 +37,7 @@ export default function AdminSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [activeTab, setActiveTab] = useState("general");
+  const [activeTab, setActiveTab] = useState('general');
 
   useEffect(() => {
     if (authLoading) return;
@@ -47,7 +49,7 @@ export default function AdminSettingsPage() {
   const loadSettings = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/admin/settings", {
+      const res = await fetch('/api/admin/settings', {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error();
@@ -64,10 +66,10 @@ export default function AdminSettingsPage() {
     setSaving(true);
     setSaved(false);
     try {
-      const res = await fetch("/api/admin/settings", {
-        method: "PUT",
+      const res = await fetch('/api/admin/settings', {
+        method: 'PUT',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ settings }),
@@ -77,7 +79,7 @@ export default function AdminSettingsPage() {
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (e: any) {
-      alert(e.message || "خطا در ذخیره");
+      alert(e.message || 'خطا در ذخیره');
     } finally {
       setSaving(false);
     }
@@ -88,11 +90,11 @@ export default function AdminSettingsPage() {
   };
 
   const tabs = [
-    { id: "general", label: "عمومی", icon: "⚙️" },
-    { id: "posts", label: "آگهی‌ها", icon: "📝" },
-    { id: "security", label: "امنیت", icon: "🛡️" },
-    { id: "content", label: "محتوا", icon: "📄" },
-    { id: "logs", label: "لاگ‌ها", icon: "📋" },
+    { id: 'general', label: 'عمومی', icon: '⚙️' },
+    { id: 'posts', label: 'آگهی‌ها', icon: '📝' },
+    { id: 'security', label: 'امنیت', icon: '🛡️' },
+    { id: 'content', label: 'محتوا', icon: '📄' },
+    { id: 'logs', label: 'لاگ‌ها', icon: '📋' },
   ];
 
   if (authLoading || loading) {
@@ -111,21 +113,17 @@ export default function AdminSettingsPage() {
       {/* هدر */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl lg:text-2xl font-bold text-gray-800">
-            تنظیمات سیستم
-          </h1>
-          <p className="text-xs lg:text-sm text-gray-500 mt-1">
-            پیکربندی پلتفرم
-          </p>
+          <h1 className="text-xl lg:text-2xl font-bold text-gray-800">تنظیمات سیستم</h1>
+          <p className="text-xs lg:text-sm text-gray-500 mt-1">پیکربندی پلتفرم</p>
         </div>
-        {activeTab !== "logs" && (
+        {activeTab !== 'logs' && (
           <button
             onClick={handleSave}
             disabled={saving}
             className={`px-5 py-2.5 rounded-xl text-sm font-bold shadow-md active:scale-95 transition-all disabled:opacity-50 flex items-center gap-2 ${
               saved
-                ? "bg-green-600 text-white"
-                : "bg-gradient-to-r from-blue-600 to-indigo-600 text-white"
+                ? 'bg-green-600 text-white'
+                : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'
             }`}
           >
             {saving ? (
@@ -137,18 +135,8 @@ export default function AdminSettingsPage() {
               <>✅ ذخیره شد</>
             ) : (
               <>
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2.5}
-                    d="M5 13l4 4L19 7"
-                  />
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                 </svg>
                 ذخیره تغییرات
               </>
@@ -165,8 +153,8 @@ export default function AdminSettingsPage() {
             onClick={() => setActiveTab(tab.id)}
             className={`flex-1 py-2.5 px-3 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${
               activeTab === tab.id
-                ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md"
-                : "text-gray-500 hover:text-gray-700"
+                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md'
+                : 'text-gray-500 hover:text-gray-700'
             }`}
           >
             <span>{tab.icon}</span>
@@ -176,7 +164,7 @@ export default function AdminSettingsPage() {
       </div>
 
       {/* تب عمومی */}
-      {activeTab === "general" && (
+      {activeTab === 'general' && (
         <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-4">
           <SectionTitle icon="🌐" title="اطلاعات سایت" />
 
@@ -184,7 +172,7 @@ export default function AdminSettingsPage() {
             <input
               type="text"
               value={settings.site_name}
-              onChange={(e) => update("site_name", e.target.value)}
+              onChange={(e) => update('site_name', e.target.value)}
               className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
             />
           </Field>
@@ -192,7 +180,7 @@ export default function AdminSettingsPage() {
           <Field label="توضیح کوتاه سایت">
             <textarea
               value={settings.site_description}
-              onChange={(e) => update("site_description", e.target.value)}
+              onChange={(e) => update('site_description', e.target.value)}
               rows={2}
               className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white resize-none"
             />
@@ -205,7 +193,7 @@ export default function AdminSettingsPage() {
               <input
                 type="text"
                 value={settings.contact_phone}
-                onChange={(e) => update("contact_phone", e.target.value)}
+                onChange={(e) => update('contact_phone', e.target.value)}
                 placeholder="0912..."
                 dir="ltr"
                 className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
@@ -215,7 +203,7 @@ export default function AdminSettingsPage() {
               <input
                 type="email"
                 value={settings.contact_email}
-                onChange={(e) => update("contact_email", e.target.value)}
+                onChange={(e) => update('contact_email', e.target.value)}
                 placeholder="info@example.com"
                 dir="ltr"
                 className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
@@ -226,35 +214,29 @@ export default function AdminSettingsPage() {
       )}
 
       {/* تب آگهی‌ها */}
-      {activeTab === "posts" && (
+      {activeTab === 'posts' && (
         <>
-          {/* 🔑 حالت تأیید آگهی */}
+          {/* حالت تأیید آگهی */}
           <div className="bg-white rounded-2xl p-5 shadow-sm border-2 border-blue-200 space-y-4">
             <div className="flex items-center gap-2">
               <span className="text-2xl">🔍</span>
               <div>
-                <h3 className="font-bold text-gray-800 text-sm">
-                  حالت تأیید آگهی
-                </h3>
-                <p className="text-[11px] text-gray-500">
-                  نحوه برخورد با آگهی‌های جدید
-                </p>
+                <h3 className="font-bold text-gray-800 text-sm">حالت تأیید آگهی</h3>
+                <p className="text-[11px] text-gray-500">نحوه برخورد با آگهی‌های جدید</p>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <button
-                onClick={() => update("post_approval_mode", "auto")}
+                onClick={() => update('post_approval_mode', 'auto')}
                 className={`p-4 rounded-xl border-2 text-center transition-all ${
-                  settings.post_approval_mode === "auto"
-                    ? "border-green-500 bg-green-50"
-                    : "border-gray-200 bg-white hover:border-gray-300"
+                  settings.post_approval_mode === 'auto'
+                    ? 'border-green-500 bg-green-50'
+                    : 'border-gray-200 bg-white hover:border-gray-300'
                 }`}
               >
                 <div className="text-3xl mb-1">⚡</div>
-                <div
-                  className={`text-sm font-bold ${settings.post_approval_mode === "auto" ? "text-green-700" : "text-gray-700"}`}
-                >
+                <div className={`text-sm font-bold ${settings.post_approval_mode === 'auto' ? 'text-green-700' : 'text-gray-700'}`}>
                   خودکار
                 </div>
                 <div className="text-[10px] text-gray-500 mt-1 leading-relaxed">
@@ -263,17 +245,15 @@ export default function AdminSettingsPage() {
               </button>
 
               <button
-                onClick={() => update("post_approval_mode", "manual")}
+                onClick={() => update('post_approval_mode', 'manual')}
                 className={`p-4 rounded-xl border-2 text-center transition-all ${
-                  settings.post_approval_mode === "manual"
-                    ? "border-amber-500 bg-amber-50"
-                    : "border-gray-200 bg-white hover:border-gray-300"
+                  settings.post_approval_mode === 'manual'
+                    ? 'border-amber-500 bg-amber-50'
+                    : 'border-gray-200 bg-white hover:border-gray-300'
                 }`}
               >
                 <div className="text-3xl mb-1">👨‍💼</div>
-                <div
-                  className={`text-sm font-bold ${settings.post_approval_mode === "manual" ? "text-amber-700" : "text-gray-700"}`}
-                >
+                <div className={`text-sm font-bold ${settings.post_approval_mode === 'manual' ? 'text-amber-700' : 'text-gray-700'}`}>
                   دستی (توسط ادمین)
                 </div>
                 <div className="text-[10px] text-gray-500 mt-1 leading-relaxed">
@@ -282,16 +262,14 @@ export default function AdminSettingsPage() {
               </button>
             </div>
 
-            <div
-              className={`text-xs p-3 rounded-xl ${
-                settings.post_approval_mode === "auto"
-                  ? "bg-green-50 text-green-800"
-                  : "bg-amber-50 text-amber-800"
-              }`}
-            >
-              {settings.post_approval_mode === "auto"
-                ? "⚡ در این حالت، هر آگهی جدید بلافاصله در اپ نمایش داده می‌شه."
-                : "👨‍💼 در این حالت، هر آگهی جدید ابتدا در صف «در انتظار تأیید» قرار می‌گیره و فقط پس از تأیید ادمین نمایش داده می‌شه."}
+            <div className={`text-xs p-3 rounded-xl ${
+              settings.post_approval_mode === 'auto'
+                ? 'bg-green-50 text-green-800'
+                : 'bg-amber-50 text-amber-800'
+            }`}>
+              {settings.post_approval_mode === 'auto'
+                ? '⚡ در این حالت، هر آگهی جدید بلافاصله در اپ نمایش داده می‌شه.'
+                : '👨‍💼 در این حالت، هر آگهی جدید ابتدا در صف «در انتظار تأیید» قرار می‌گیره و فقط پس از تأیید ادمین نمایش داده می‌شه.'}
             </div>
           </div>
 
@@ -299,13 +277,13 @@ export default function AdminSettingsPage() {
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-4">
             <SectionTitle icon="📊" title="محدودیت‌ها" />
 
-            <Field label="حداکثر آگهی هر کاربر">
+            <Field label="حداکثر آگهی هر کاربر (کل)">
               <input
                 type="number"
                 min={1}
                 max={1000}
                 value={settings.max_posts_per_user}
-                onChange={(e) => update("max_posts_per_user", e.target.value)}
+                onChange={(e) => update('max_posts_per_user', e.target.value)}
                 className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
                 dir="ltr"
               />
@@ -314,10 +292,74 @@ export default function AdminSettingsPage() {
               </p>
             </Field>
 
+            {/* 🔑 محدودیت روزانه */}
+            <div className="border-t border-gray-100 pt-4 mt-4">
+              <div className="flex items-start gap-3 mb-3">
+                <span className="text-2xl">📅</span>
+                <div className="flex-1">
+                  <h4 className="font-bold text-gray-800 text-sm">محدودیت روزانه</h4>
+                  <p className="text-[11px] text-gray-500 mt-0.5">
+                    حداکثر تعداد آگهی که یک کاربر می‌تونه در یک روز ثبت کنه
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 mb-3">
+                {[
+                  { v: '0', l: 'بدون محدودیت', i: '♾️' },
+                  { v: '1', l: '۱ در روز', i: '1️⃣' },
+                  { v: '2', l: '۲ در روز', i: '2️⃣' },
+                  { v: '3', l: '۳ در روز', i: '3️⃣' },
+                  { v: '5', l: '۵ در روز', i: '5️⃣' },
+                ].map((opt) => (
+                  <button
+                    key={opt.v}
+                    type="button"
+                    onClick={() => update('max_posts_per_day', opt.v)}
+                    className={`p-3 rounded-xl border-2 text-center transition-all ${
+                      settings.max_posts_per_day === opt.v
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-200 bg-white hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="text-2xl mb-1">{opt.i}</div>
+                    <div
+                      className={`text-[11px] font-bold ${
+                        settings.max_posts_per_day === opt.v ? 'text-blue-700' : 'text-gray-600'
+                      }`}
+                    >
+                      {opt.l}
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              {/* ورودی دستی */}
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-gray-600">یا مقدار دلخواه:</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={settings.max_posts_per_day}
+                  onChange={(e) => update('max_posts_per_day', e.target.value)}
+                  className="w-24 p-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  dir="ltr"
+                />
+                <span className="text-xs text-gray-500">آگهی در روز</span>
+              </div>
+
+              {settings.max_posts_per_day === '0' && (
+                <div className="mt-2 text-[11px] text-amber-700 bg-amber-50 p-2 rounded-lg">
+                  ⚠️ با مقدار ۰، هیچ محدودیت روزانه‌ای اعمال نمی‌شود
+                </div>
+              )}
+            </div>
+
             <Field label="کلمات ممنوعه">
               <textarea
                 value={settings.banned_words}
-                onChange={(e) => update("banned_words", e.target.value)}
+                onChange={(e) => update('banned_words', e.target.value)}
                 rows={3}
                 placeholder="کلمات رو با کاما جدا کن: کلمه۱, کلمه۲, کلمه۳"
                 className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white resize-none"
@@ -331,7 +373,7 @@ export default function AdminSettingsPage() {
       )}
 
       {/* تب امنیت */}
-      {activeTab === "security" && (
+      {activeTab === 'security' && (
         <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-4">
           <SectionTitle icon="🛡️" title="امنیت" />
 
@@ -341,7 +383,7 @@ export default function AdminSettingsPage() {
               min={1}
               max={365}
               value={settings.token_expiry_days}
-              onChange={(e) => update("token_expiry_days", e.target.value)}
+              onChange={(e) => update('token_expiry_days', e.target.value)}
               className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
               dir="ltr"
             />
@@ -353,14 +395,14 @@ export default function AdminSettingsPage() {
       )}
 
       {/* تب محتوا */}
-      {activeTab === "content" && (
+      {activeTab === 'content' && (
         <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-4">
           <SectionTitle icon="📄" title="متن قوانین و درباره ما" />
 
           <Field label="متن «درباره ما»">
             <textarea
               value={settings.about_text}
-              onChange={(e) => update("about_text", e.target.value)}
+              onChange={(e) => update('about_text', e.target.value)}
               rows={5}
               placeholder="متن درباره ما..."
               className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white resize-none"
@@ -370,7 +412,7 @@ export default function AdminSettingsPage() {
           <Field label="متن «قوانین و مقررات»">
             <textarea
               value={settings.rules_text}
-              onChange={(e) => update("rules_text", e.target.value)}
+              onChange={(e) => update('rules_text', e.target.value)}
               rows={10}
               placeholder="متن قوانین..."
               className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white resize-none"
@@ -380,7 +422,7 @@ export default function AdminSettingsPage() {
       )}
 
       {/* تب لاگ‌ها */}
-      {activeTab === "logs" && <AdminLogs token={token!} />}
+      {activeTab === 'logs' && <AdminLogs token={token!} />}
     </div>
   );
 }
@@ -394,18 +436,10 @@ function SectionTitle({ icon, title }: { icon: string; title: string }) {
   );
 }
 
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="text-xs font-semibold text-gray-700 mb-1.5 block">
-        {label}
-      </label>
+      <label className="text-xs font-semibold text-gray-700 mb-1.5 block">{label}</label>
       {children}
     </div>
   );
@@ -440,39 +474,37 @@ function AdminLogs({ token }: { token: string }) {
 
   const formatDate = (date: string) => {
     try {
-      return new Date(date).toLocaleString("fa-IR", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
+      return new Date(date).toLocaleString('fa-IR', {
+        month: 'short', day: 'numeric', year: 'numeric',
+        hour: '2-digit', minute: '2-digit',
       });
-    } catch {
-      return "";
-    }
+    } catch { return ''; }
   };
 
   const actionLabel = (action: string) => {
     const map: Record<string, string> = {
-      block_user: "🚫 مسدودسازی کاربر",
-      unblock_user: "✅ فعال‌سازی کاربر",
-      delete_user: "🗑️ حذف کاربر",
-      update_user: "✏️ ویرایش کاربر",
-      approve_post: "✅ تأیید آگهی",
-      reject_post: "❌ رد آگهی",
-      delete_post: "🗑️ حذف آگهی",
-      update_post: "✏️ ویرایش آگهی",
-      change_post_status: "🔄 تغییر وضعیت آگهی",
-      change_contract_status: "🔄 تغییر وضعیت قرارداد",
-      toggle_contract_review: "🚨 علامت بررسی قرارداد",
-      save_contract_note: "📝 یادداشت قرارداد",
-      report_resolve: "✅ حل گزارش",
-      report_dismiss: "❌ رد گزارش",
-      report_delete_target: "🗑️ حذف محتوای گزارش",
-      report_block_user: "🚫 مسدودسازی از گزارش",
-      report_warn_user: "⚠️ ارسال اخطار",
-      send_broadcast: "📢 ارسال اعلان",
-      update_settings: "⚙️ تغییر تنظیمات",
+      block_user: '🚫 مسدودسازی کاربر',
+      unblock_user: '✅ فعال‌سازی کاربر',
+      delete_user: '🗑️ حذف کاربر',
+      update_user: '✏️ ویرایش کاربر',
+      approve_post: '✅ تأیید آگهی',
+      reject_post: '❌ رد آگهی',
+      delete_post: '🗑️ حذف آگهی',
+      update_post: '✏️ ویرایش آگهی',
+      change_post_status: '🔄 تغییر وضعیت آگهی',
+      change_contract_status: '🔄 تغییر وضعیت قرارداد',
+      toggle_contract_review: '🚨 علامت بررسی قرارداد',
+      save_contract_note: '📝 یادداشت قرارداد',
+      report_resolve: '✅ حل گزارش',
+      report_dismiss: '❌ رد گزارش',
+      report_delete_target: '🗑️ حذف محتوای گزارش',
+      report_block_user: '🚫 مسدودسازی از گزارش',
+      report_warn_user: '⚠️ ارسال اخطار',
+      send_broadcast: '📢 ارسال اعلان',
+      update_settings: '⚙️ تغییر تنظیمات',
+      create_category: '➕ ساخت دسته',
+      update_category: '✏️ ویرایش دسته',
+      delete_category: '🗑️ حذف دسته',
     };
     return map[action] || action;
   };
@@ -481,10 +513,7 @@ function AdminLogs({ token }: { token: string }) {
     return (
       <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
         {[1, 2, 3].map((i) => (
-          <div
-            key={i}
-            className="h-12 bg-gray-100 rounded animate-pulse mb-2"
-          />
+          <div key={i} className="h-12 bg-gray-100 rounded animate-pulse mb-2" />
         ))}
       </div>
     );
@@ -494,7 +523,7 @@ function AdminLogs({ token }: { token: string }) {
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
       <div className="p-4 border-b border-gray-100">
         <h3 className="font-bold text-gray-800 text-sm">
-          📋 لاگ فعالیت‌های ادمین ({pagination.total.toLocaleString("fa-IR")})
+          📋 لاگ فعالیت‌های ادمین ({pagination.total.toLocaleString('fa-IR')})
         </h3>
       </div>
 
@@ -513,8 +542,7 @@ function AdminLogs({ token }: { token: string }) {
                   </div>
                   <div className="text-[10px] text-gray-500 mt-0.5">
                     👤 {log.admin_name || `ادمین #${log.admin_id}`}
-                    {log.target_type &&
-                      ` • 🎯 ${log.target_type} #${log.target_id}`}
+                    {log.target_type && ` • 🎯 ${log.target_type} #${log.target_id}`}
                   </div>
                 </div>
                 <div className="text-[10px] text-gray-400 whitespace-nowrap">
@@ -533,40 +561,18 @@ function AdminLogs({ token }: { token: string }) {
             disabled={page === 1}
             className="w-8 h-8 rounded-lg bg-gray-50 border border-gray-200 flex items-center justify-center disabled:opacity-40"
           >
-            <svg
-              className="w-3 h-3 rotate-180"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 5l7 7-7 7"
-              />
+            <svg className="w-3 h-3 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
           </button>
-          <span className="text-xs text-gray-600">
-            {page} از {pagination.pages}
-          </span>
+          <span className="text-xs text-gray-600">{page} از {pagination.pages}</span>
           <button
             onClick={() => setPage((p) => Math.min(pagination.pages, p + 1))}
             disabled={page === pagination.pages}
             className="w-8 h-8 rounded-lg bg-gray-50 border border-gray-200 flex items-center justify-center disabled:opacity-40"
           >
-            <svg
-              className="w-3 h-3"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 5l7 7-7 7"
-              />
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
           </button>
         </div>

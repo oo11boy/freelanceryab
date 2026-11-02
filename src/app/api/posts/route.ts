@@ -13,13 +13,13 @@ async function normalizeCategoryFromDB(input?: string | null): Promise<string | 
   }
 
   try {
-    const rows = await query(
+    const rows = (await query(
       `SELECT db_name, slug, name FROM categories
        WHERE slug = ? OR db_name = ? OR name = ?
        LIMIT 1`,
       [cleaned, cleaned, cleaned]
-    );
-    const found = (rows as any[])[0];
+    )) as any[];
+    const found = rows[0];
     return found ? found.db_name : cleaned;
   } catch (err) {
     console.error('normalizeCategoryFromDB error:', err);
@@ -81,11 +81,11 @@ export async function GET(request: NextRequest) {
       [...whereParams, limit, offset],
     );
 
-    const totalRows = await query(
+    const totalRows = (await query(
       `SELECT COUNT(*) AS count FROM posts p ${whereSQL}`,
       whereParams,
-    );
-    const total = (totalRows as any[])[0]?.count || 0;
+    )) as any[];
+    const total = totalRows[0]?.count || 0;
 
     return NextResponse.json({
       posts,
@@ -118,12 +118,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "دسته‌بندی نامعتبر است" }, { status: 400 });
     }
 
-    // ۱. کلمات ممنوعه
+    // ==================================================
+    // 🔑 ۱. چک کلمات ممنوعه
+    // ==================================================
     try {
-      const bannedRows = await query(
+      const bannedRows = (await query(
         `SELECT \`value\` FROM settings WHERE \`key\` = 'banned_words' LIMIT 1`
-      );
-      const bannedWordsStr = (bannedRows as any[])[0]?.value || "";
+      )) as any[];
+      const bannedWordsStr = bannedRows[0]?.value || "";
       const bannedWords = bannedWordsStr
         .split(",")
         .map((w: string) => w.trim().toLowerCase())
@@ -145,21 +147,24 @@ export async function POST(request: NextRequest) {
       console.warn("Banned words check skipped:", settingsErr.message);
     }
 
-    // ۲. حداکثر آگهی
+    // ==================================================
+    // 🔑 ۲. چک حداکثر آگهی کل
+    // ==================================================
     try {
-      const maxPostsRows = await query(
+      const maxPostsRows = (await query(
         `SELECT \`value\` FROM settings WHERE \`key\` = 'max_posts_per_user' LIMIT 1`
-      );
-      const maxPosts = parseInt((maxPostsRows as any[])[0]?.value || "10");
+      )) as any[];
+      const maxPosts = parseInt(maxPostsRows[0]?.value || "10");
 
       if (maxPosts > 0) {
-     const userPostCountRows = await query(
-  `SELECT COUNT(*) AS count FROM posts
-   WHERE user_id = ?
-     AND status IN ('active', 'pending', 'locked', 'in_progress', 'delivered')`,
-  [user_id]
-) as any[];
-      const currentCount = Number(userPostCountRows[0]?.count || 0);
+        const userPostCountRows = (await query(
+          `SELECT COUNT(*) AS count FROM posts
+           WHERE user_id = ?
+             AND status IN ('active', 'pending', 'locked', 'in_progress', 'delivered')`,
+          [user_id]
+        )) as any[];
+        const currentCount = Number(userPostCountRows[0]?.count || 0);
+
         if (currentCount >= maxPosts) {
           return NextResponse.json(
             { error: `شما به حداکثر تعداد آگهی مجاز (${maxPosts}) رسیده‌اید.` },
@@ -171,15 +176,52 @@ export async function POST(request: NextRequest) {
       console.warn("Max posts check skipped:", settingsErr.message);
     }
 
-    // ۳. حالت تأیید
+    // ==================================================
+    // 🔑 ۲.۵. چک حداکثر آگهی در روز (🆕)
+    // ==================================================
+    try {
+      const maxPostsPerDayRows = (await query(
+        `SELECT \`value\` FROM settings WHERE \`key\` = 'max_posts_per_day' LIMIT 1`
+      )) as any[];
+      const maxPostsPerDay = parseInt(maxPostsPerDayRows[0]?.value || "0");
+
+      if (maxPostsPerDay > 0) {
+        const todayCountRows = (await query(
+          `SELECT COUNT(*) AS count FROM posts
+           WHERE user_id = ?
+             AND DATE(created_at) = CURDATE()
+             AND status NOT IN ('expired', 'rejected')`,
+          [user_id]
+        )) as any[];
+        const todayCount = Number(todayCountRows[0]?.count || 0);
+
+        if (todayCount >= maxPostsPerDay) {
+          return NextResponse.json(
+            {
+              error:
+                maxPostsPerDay === 1
+                  ? 'شما امروز یک آگهی ثبت کرده‌اید. هر کاربر در روز فقط یک آگهی می‌تواند ثبت کند.'
+                  : `شما امروز ${todayCount} آگهی ثبت کرده‌اید. حداکثر مجاز در روز ${maxPostsPerDay} آگهی است.`,
+            },
+            { status: 429 }
+          );
+        }
+      }
+    } catch (settingsErr: any) {
+      console.warn("Max posts per day check skipped:", settingsErr.message);
+    }
+
+    // ==================================================
+    // 🔑 ۳. چک حالت تأیید
+    // ==================================================
     let initialStatus: string = "pending";
     try {
-      const approvalRows = await query(
+      const approvalRows = (await query(
         `SELECT \`value\` FROM settings WHERE \`key\` = 'post_approval_mode' LIMIT 1`
-      );
-      const approvalMode = (approvalRows as any[])[0]?.value || "manual";
+      )) as any[];
+      const approvalMode = approvalRows[0]?.value || "manual";
       initialStatus = approvalMode === "auto" ? "active" : "pending";
-    } catch (settingsErr: any) {
+    } catch (settingsErr) {
       initialStatus = "pending";
     }
 
@@ -214,10 +256,10 @@ export async function POST(request: NextRequest) {
     // اعلان به ادمین (فقط manual)
     if (initialStatus === "pending") {
       try {
-        const admins = await query(
+        const admins = (await query(
           `SELECT id FROM users WHERE role = 'admin' AND is_active = 1`
-        );
-        for (const admin of admins as any[]) {
+        )) as any[];
+        for (const admin of admins) {
           await query(
             `INSERT INTO notifications (user_id, type, title, message, link)
              VALUES (?, 'system', '📝 آگهی جدید در انتظار تأیید', ?, '/admin/posts?filter=pending')`,
