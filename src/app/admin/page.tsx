@@ -11,6 +11,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
+import OnlineUsersCard from './components/OnlineUsersCard';
 
 interface Stats {
   users: { total: number; new_week: number; active: number };
@@ -158,69 +159,75 @@ export default function AdminDashboard() {
         />
       </div>
 
-      {/* نمودار */}
-      <div className="bg-white rounded-2xl p-4 lg:p-6 shadow-sm border border-gray-100">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-bold text-gray-800 text-sm lg:text-base">
-            📈 رشد ۷ روز اخیر
-          </h2>
-          <div className="flex items-center gap-3 text-[10px]">
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-blue-500" />
-              کاربران
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-purple-500" />
-              آگهی‌ها
-            </span>
+      {/* 🆕 نمودار + کارت کاربران آنلاین */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* نمودار */}
+        <div className="lg:col-span-2 bg-white rounded-2xl p-4 lg:p-6 shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-bold text-gray-800 text-sm lg:text-base">
+              📈 رشد ۷ روز اخیر
+            </h2>
+            <div className="flex items-center gap-3 text-[10px]">
+              <span className="flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-blue-500" />
+                کاربران
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-purple-500" />
+                آگهی‌ها
+              </span>
+            </div>
+          </div>
+          <div className="h-56 lg:h-72" dir="ltr">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={last7Days}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fontSize: 11, fill: '#64748b' }}
+                  axisLine={{ stroke: '#e2e8f0' }}
+                  tickLine={false}
+                />
+                <YAxis
+                  tick={{ fontSize: 11, fill: '#64748b' }}
+                  axisLine={{ stroke: '#e2e8f0' }}
+                  tickLine={false}
+                  allowDecimals={false}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#fff',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '12px',
+                    fontSize: '12px',
+                    direction: 'rtl',
+                  }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="users"
+                  stroke="#3b82f6"
+                  strokeWidth={2.5}
+                  dot={{ fill: '#3b82f6', r: 3 }}
+                  activeDot={{ r: 5 }}
+                  name="کاربران"
+                />
+                <Line
+                  type="monotone"
+                  dataKey="posts"
+                  stroke="#a855f7"
+                  strokeWidth={2.5}
+                  dot={{ fill: '#a855f7', r: 3 }}
+                  activeDot={{ r: 5 }}
+                  name="آگهی‌ها"
+                />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
         </div>
-        <div className="h-56 lg:h-72" dir="ltr">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={last7Days}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis
-                dataKey="date"
-                tick={{ fontSize: 11, fill: '#64748b' }}
-                axisLine={{ stroke: '#e2e8f0' }}
-                tickLine={false}
-              />
-              <YAxis
-                tick={{ fontSize: 11, fill: '#64748b' }}
-                axisLine={{ stroke: '#e2e8f0' }}
-                tickLine={false}
-                allowDecimals={false}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#fff',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '12px',
-                  fontSize: '12px',
-                  direction: 'rtl',
-                }}
-              />
-              <Line
-                type="monotone"
-                dataKey="users"
-                stroke="#3b82f6"
-                strokeWidth={2.5}
-                dot={{ fill: '#3b82f6', r: 3 }}
-                activeDot={{ r: 5 }}
-                name="کاربران"
-              />
-              <Line
-                type="monotone"
-                dataKey="posts"
-                stroke="#a855f7"
-                strokeWidth={2.5}
-                dot={{ fill: '#a855f7', r: 3 }}
-                activeDot={{ r: 5 }}
-                name="آگهی‌ها"
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
+
+        {/* 🆕 کارت کاربران آنلاین */}
+        <OnlineUsersCard />
       </div>
 
       {/* بخش دو ستونی */}

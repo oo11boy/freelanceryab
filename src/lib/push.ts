@@ -15,6 +15,8 @@ export interface PushPayload {
   link?: string;
   icon?: string;
   tag?: string;
+  notificationId?: number;
+  userId?: number;
 }
 
 export interface PushResult {
@@ -38,7 +40,16 @@ export async function sendPushToUser(
       return { userId, success: false, error: 'No subscriptions' };
     }
 
-    const notificationPayload = JSON.stringify(payload);
+    // 🔑 userId رو به payload اضافه کن
+    const dataToSend = { ...payload, userId };
+    const notificationPayload = JSON.stringify(dataToSend);
+
+    console.log(`📤 [push] Sending to user ${userId}:`, {
+      notificationId: payload.notificationId,
+      userId,
+      title: payload.title,
+    });
+
     let success = false;
     let lastError = '';
 

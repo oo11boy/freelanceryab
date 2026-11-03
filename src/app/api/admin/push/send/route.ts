@@ -62,8 +62,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'نوع مخاطب نامعتبر' }, { status: 400 });
     }
 
-    if (audience === 'specific' && (!Array.isArray(specific_user_ids) || specific_user_ids.length === 0)) {
-      return NextResponse.json({ error: 'حداقل یک کاربر را انتخاب کنید' }, { status: 400 });
+    if (
+      audience === 'specific' &&
+      (!Array.isArray(specific_user_ids) || specific_user_ids.length === 0)
+    ) {
+      return NextResponse.json(
+        { error: 'حداقل یک کاربر را انتخاب کنید' },
+        { status: 400 }
+      );
     }
 
     // 🔑 لیست گیرندگان
@@ -86,8 +92,9 @@ export async function POST(request: NextRequest) {
       )) as any[];
       targetUsers = rows.map((r) => r.user_id);
     } else {
-      // specific
-      const ids = specific_user_ids.map((n: any) => Number(n)).filter((n: number) => !isNaN(n));
+      const ids = specific_user_ids
+        .map((n: any) => Number(n))
+        .filter((n: number) => !isNaN(n));
       const placeholders = ids.map(() => '?').join(',');
       const rows = (await query(
         `SELECT DISTINCT ps.user_id
@@ -101,7 +108,7 @@ export async function POST(request: NextRequest) {
 
     if (targetUsers.length === 0) {
       return NextResponse.json(
-        { error: 'هیچ کاربری با subscription فعال یافت نشد' },
+        { error: 'هیچ کاربری با اشتراک پوش فعال یافت نشد' },
         { status: 404 }
       );
     }
@@ -124,30 +131,43 @@ export async function POST(request: NextRequest) {
     );
 
     const notificationId = (result as any).insertId;
+    console.log('🔍 [push/send] Notification ID:', notificationId);
 
-    // 🔑 ارسال
-    const { sendPushToUsers } = await import('@/lib/push');
-    const pushResults = await sendPushToUsers(targetUsers, {
-      title: title.trim(),
-      message: message.trim(),
-      link: link?.trim() || '/',
-      icon: icon?.trim() || '/icons/icon-192.png',
-      tag: `push-${notificationId}`,
-    });
+    if (!notificationId) {
+      return NextResponse.json(
+        { error: 'خطا در ذخیره ارسال' },
+        { status: 500 }
+      );
+    }
 
-    // 🔑 ذخیره لاگ‌ها
+    // 🔑 ارسال به هر کاربر (با notificationId و userId)
+    const { sendPushToUser } = await import('@/lib/push');
     let delivered = 0;
     let failed = 0;
 
-    for (const r of pushResults) {
-      const status = r.success ? 'sent' : 'failed';
-      if (r.success) delivered++;
+    for (const userId of targetUsers) {
+      const res = await sendPushToUser(userId, {
+        title: title.trim(),
+        message: message.trim(),
+        link: link?.trim() || '/',
+        icon: icon?.trim() || '/icons/icon-192.png',
+        tag: `push-${notificationId}`,
+        notificationId,
+      });
+
+      console.log(
+        `🔍 [push/send] User ${userId}:`,
+        res.success ? '✅' : `❌ ${res.error}`
+      );
+
+      const status = res.success ? 'sent' : 'failed';
+      if (res.success) delivered++;
       else failed++;
 
       await query(
         `INSERT INTO push_notification_logs (notification_id, user_id, status, error)
          VALUES (?, ?, ?, ?)`,
-        [notificationId, r.userId, status, r.error || null]
+        [notificationId, userId, status, res.error || null]
       );
     }
 
@@ -159,13 +179,19 @@ export async function POST(request: NextRequest) {
       [delivered, failed, notificationId]
     );
 
-    await logAdminAction(adminId, 'send_push_notification', 'push_notification', notificationId, {
-      title: title.trim(),
-      audience,
-      total: targetUsers.length,
-      delivered,
-      failed,
-    });
+    await logAdminAction(
+      adminId,
+      'send_push_notification',
+      'push_notification',
+      notificationId,
+      {
+        title: title.trim(),
+        audience,
+        total: targetUsers.length,
+        delivered,
+        failed,
+      }
+    );
 
     return NextResponse.json({
       success: true,

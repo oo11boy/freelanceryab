@@ -58,9 +58,7 @@ export default function LoginPage() {
       setStep("otp");
       setTimer(120);
       hasSubmittedRef.current = false;
-      if (data.debug_code) {
-        console.log("کد تست:", data.debug_code);
-      }
+ 
     } catch (err: any) {
       setError(err.message);
     } finally {

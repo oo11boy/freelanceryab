@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/app/hooks/useAuth';
+import PushSubscribersCard from '../components/PushSubscribersCard';
 
 interface PushNotif {
   id: number;
@@ -72,7 +73,6 @@ export default function AdminPushPage() {
     }
   };
 
-  // جستجوی کاربر
   useEffect(() => {
     if (!userSearch.trim()) {
       setUserResults([]);
@@ -173,13 +173,10 @@ export default function AdminPushPage() {
   const audienceLabel = (a: string) =>
     a === 'all' ? 'همه' : a === 'active' ? 'آنلاین' : 'منتخب';
 
-  if (authLoading || loading) {
+  if (authLoading) {
     return (
-      <div className="p-4 lg:p-6">
-        <div className="bg-white rounded-2xl p-8 shadow-sm animate-pulse">
-          <div className="h-6 bg-gray-200 rounded w-1/3 mb-3" />
-          <div className="h-4 bg-gray-100 rounded w-2/3" />
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -207,7 +204,10 @@ export default function AdminPushPage() {
         </button>
       </div>
 
-      {/* آمار */}
+      {/* 🆕 کارت کاربران با پوش فعال */}
+      <PushSubscribersCard   />
+
+      {/* آمار ارسال‌ها */}
       {stats && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <MiniStat label="کل ارسال" value={stats.total} color="blue" icon="📤" />
@@ -240,10 +240,13 @@ export default function AdminPushPage() {
               type="text"
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              maxLength={150}
+              maxLength={70}
               placeholder="مثلاً: به‌روزرسانی جدید پلتفرم"
               className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
             />
+            <div className="text-[10px] text-gray-400 text-left mt-1">
+              {formData.title.length}/70
+            </div>
           </div>
 
           <div>
@@ -428,7 +431,11 @@ export default function AdminPushPage() {
           <h2 className="font-bold text-gray-800 text-sm">📜 تاریخچه ارسال‌ها</h2>
         </div>
 
-        {notifications.length === 0 ? (
+        {loading ? (
+          <div className="p-8 animate-pulse">
+            <div className="h-20 bg-gray-100 rounded-xl" />
+          </div>
+        ) : notifications.length === 0 ? (
           <div className="p-12 text-center">
             <div className="text-4xl mb-3">📤</div>
             <p className="text-gray-700 font-semibold mb-1">پوشی ارسال نشده</p>

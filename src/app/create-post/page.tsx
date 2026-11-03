@@ -384,28 +384,30 @@ const handleSubmit = async (e: React.FormEvent) => {
                 </div>
 
                 <div className="bg-white lg:rounded-2xl lg:p-6 lg:shadow-sm lg:border lg:border-gray-100 space-y-5">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      عنوان آگهی <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="title"
-                      placeholder="مثال: برنامه‌نویس ری‌اکت برای پروژه فروشگاهی"
-                      className={`w-full p-3.5 lg:p-4 bg-white border rounded-xl focus:outline-none focus:ring-2 transition-all ${
-                        errors.title ? "border-red-300 focus:ring-red-500" : "border-gray-200 focus:ring-blue-500 focus:border-blue-500"
-                      }`}
-                      value={formData.title}
-                      onChange={handleChange}
-                      maxLength={100}
-                    />
-                    <div className="flex justify-between mt-1.5">
-                      {errors.title ? (
-                        <p className="text-xs text-red-500 flex items-center gap-1">⚠️ {errors.title}</p>
-                      ) : <span />}
-                      <span className="text-xs text-gray-400">{formData.title.length}/100</span>
-                    </div>
-                  </div>
+            <div>
+  <label className="block text-sm font-semibold text-gray-700 mb-2">
+    عنوان آگهی <span className="text-red-500">*</span>
+  </label>
+  <input
+    type="text"
+    name="title"
+    placeholder="مثال: برنامه‌نویس ری‌اکت برای پروژه فروشگاهی"
+    className={`w-full p-3.5 lg:p-4 bg-white border rounded-xl focus:outline-none focus:ring-2 transition-all ${
+      errors.title ? "border-red-300 focus:ring-red-500" : "border-gray-200 focus:ring-blue-500 focus:border-blue-500"
+    }`}
+    value={formData.title}
+    onChange={handleChange}
+    maxLength={70}
+  />
+  <div className="flex justify-between mt-1.5">
+    {errors.title ? (
+      <p className="text-xs text-red-500 flex items-center gap-1">⚠️ {errors.title}</p>
+    ) : <span />}
+    <span className={`text-xs ${formData.title.length > 60 ? 'text-amber-500' : 'text-gray-400'}`}>
+      {formData.title.length}/70
+    </span>
+  </div>
+</div>
 
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">

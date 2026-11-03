@@ -14,7 +14,7 @@ self.addEventListener('push', (event) => {
   console.log('[SW] Push received:', event.data?.text());
 
   let data = {
-    title: 'فریلنسرکار',
+    title: 'فریلنسریاب',
     message: 'اعلان جدید',
     link: '/',
     icon: '/icons/icon-192.png',
@@ -24,6 +24,11 @@ self.addEventListener('push', (event) => {
     if (event.data) {
       const parsed = event.data.json();
       data = { ...data, ...parsed };
+      console.log('[SW] Parsed:', {
+        title: data.title,
+        notificationId: data.notificationId,
+        userId: data.userId,
+      });
     }
   } catch (err) {
     console.error('[SW] Parse error:', err);
@@ -42,22 +47,28 @@ self.addEventListener('push', (event) => {
     vibrate: [200, 100, 200],
     tag: data.tag || 'default',
     renotify: true,
-    requireInteraction: false,
   };
 
   event.waitUntil(self.registration.showNotification(data.title, options));
 });
 
 self.addEventListener('notificationclick', (event) => {
-  console.log('[SW] Notification clicked');
+  console.log('[SW] ========== NOTIFICATION CLICKED ==========');
+  console.log('[SW] Notification data:', JSON.stringify(event.notification.data));
+
   event.notification.close();
 
   const url = event.notification.data?.url || '/';
   const notificationId = event.notification.data?.notificationId;
   const userId = event.notification.data?.userId;
 
+  console.log('[SW] URL:', url);
+  console.log('[SW] notificationId:', notificationId);
+  console.log('[SW] userId:', userId);
+
   // 🔑 ثبت کلیک
   if (notificationId) {
+    console.log('[SW] Sending click to API...');
     event.waitUntil(
       fetch('/api/push/click', {
         method: 'POST',
@@ -66,8 +77,16 @@ self.addEventListener('notificationclick', (event) => {
           notification_id: notificationId,
           user_id: userId,
         }),
-      }).catch((err) => console.error('[SW] Click track error:', err))
+      })
+        .then((res) => {
+          console.log('[SW] Click API status:', res.status);
+          return res.json();
+        })
+        .then((data) => console.log('[SW] Click API response:', data))
+        .catch((err) => console.error('[SW] Click API error:', err))
     );
+  } else {
+    console.warn('[SW] ⚠️ notificationId is MISSING from payload!');
   }
 
   event.waitUntil(
